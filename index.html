@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Seller - Multi-Agent Sales Platform</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    html, body, #root { height: 100%; margin: 0; font-family: 'Inter', sans-serif; }
+    .slide-container { min-height: 100vh; overflow-y: auto; }
+    .glass { background: rgba(255,255,255,0.08); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.12); }
+    .glass-light { background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.5); }
+    .gradient-text { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .card-hover { transition: all 0.3s ease; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+    .glow { box-shadow: 0 0 60px rgba(99, 102, 241, 0.3); }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+    ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.5); border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    const { useState, useEffect, useCallback } = React;
+
+    function AISellerPresentation() {
+      const [currentSlide, setCurrentSlide] = useState(0);
+      const totalSlides = 15;
+
+      const nextSlide = useCallback(() => {
+        setCurrentSlide((prev) => (prev < totalSlides - 1 ? prev + 1 : prev));
+      }, []);
+
+      const prevSlide = useCallback(() => {
+        setCurrentSlide((prev) => (prev > 0 ? prev - 1 : prev));
+      }, []);
+
+      useEffect(() => {
+        const handleKeyDown = (e) => {
+          if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+          if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }, [nextSlide, prevSlide]);
+
+      const slideGroups = [
+        { name: 'Intro', slides: [0] },
+        { name: 'Value', slides: [1] },
+        { name: 'Use Cases', slides: [2,3,4,5,6,7] },
+        { name: 'User Flows', slides: [8,9,10] },
+        { name: 'Architecture', slides: [11] },
+        { name: 'Agents', slides: [12] },
+        { name: 'Data & RBAC', slides: [13] },
+        { name: 'Security', slides: [14] },
+      ];
+
+      // Navigation Component
+      const Navigation = () => (
+        <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-white/10 p-4 z-50">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <button 
+              onClick={prevSlide} 
+              disabled={currentSlide === 0}
+              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-base transition-all flex items-center gap-2 shadow-lg"
+            >
+              <span>←</span> Previous
+            </button>
+            
+            <div className="flex items-center gap-2">
+              {slideGroups.map((group, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentSlide(group.slides[0])}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${group.slides.includes(currentSlide) ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'}`}
+                >
+                  {group.name}
+                </button>
+              ))}
+              <div className="ml-4 px-3 py-2 bg-white/10 rounded-lg text-sm text-white/60">
+                {currentSlide + 1} / {totalSlides}
+              </div>
+            </div>
+            
+            <button 
+              onClick={nextSlide} 
+              disabled={currentSlide === totalSlides - 1}
+              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-base transition-all flex items-center gap-2 shadow-lg"
+            >
+              Next <span>→</span>
+            </button>
+          </div>
+        </div>
+      );
+
+      // Slide 0: Introduction
+      const IntroSlide = () => (
+        <div className="slide-container bg-[#0a0a1a] p-8 pb-24 flex flex-col justify-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/30 via-purple-900/20 to-slate-900/50"></div>
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl"></div>
+          
+          <div className="max-w-5xl mx-auto text-center relative z-10">
+            <div className="mb-10">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-300 px-6 py-2.5 rounded-full text-base font-medium mb-8">
+                <span className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-pulse"></span>
+                MULTI-AGENT AI PLATFORM
+              </div>
+              <h1 className="text-8xl font-bold text-white mb-6 tracking-tight">
+                AI <span className="gradient-text">Seller</span>
+              </h1>
+              <p className="text-3xl text-slate-400 font-light">
+                Crew AI-Powered Sales Automation Platform
+              </p>
+            </div>
+
+            <div className="glass rounded-3xl p-10 mt-16 glow">
+              <h2 className="text-2xl font-semibold text-white mb-8">Presentation Overview — 15 Slides</h2>
+              <div className="grid grid-cols-7 gap-4">
+                {slideGroups.map((group, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentSlide(group.slides[0])}
+                    className="glass card-hover rounded-2xl p-5 text-left group"
+                  >
+                    <div className="text-4xl font-bold bg-gradient-to-br from-indigo-400 to-purple-400 bg-clip-text text-transparent mb-3">{String(index + 1).padStart(2, '0')}</div>
+                    <div className="text-white/90 font-semibold text-base group-hover:text-white transition-colors">{group.name}</div>
+                    <div className="text-slate-500 text-sm mt-1">{group.slides.length} slide{group.slides.length > 1 ? 's' : ''}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-12 text-slate-500 text-base flex items-center justify-center gap-6">
+              <span className="flex items-center gap-2"><kbd className="px-3 py-1.5 bg-white/10 rounded text-sm">←</kbd><kbd className="px-3 py-1.5 bg-white/10 rounded text-sm">→</kbd> Navigate</span>
+              <span className="flex items-center gap-2"><kbd className="px-3 py-1.5 bg-white/10 rounded text-sm">Space</kbd> Next slide</span>
+            </div>
+          </div>
+        </div>
+      );
+
+      // Slide 1: Value Proposition
+      const ValuePropositionSlide = () => (
+        <div className="slide-container bg-[#0a0a1a] p-8 pb-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/20 via-indigo-900/20 to-purple-900/20"></div>
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-600/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-3xl"></div>
+          
+          <div className="max-w-7xl mx-auto relative z-10">
+            <div className="mb-8">
+              <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 px-5 py-2 rounded-full text-sm font-medium mb-4">
+                VALUE PROPOSITION
+              </div>
+              <h1 className="text-5xl font-bold text-white mb-3">Transform Your Sales Operations</h1>
+              <p className="text-slate-400 text-xl">End-to-end sales automation powered by autonomous agent coordination</p>
+            </div>
+
+            {/* Key Value Metrics */}
+            <div className="grid grid-cols-4 gap-4 mb-8">
+              <div className="glass rounded-2xl p-6 text-center card-hover">
+                <div className="text-5xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent mb-2">95%</div>
+                <div className="text-white/80 text-base font-medium">Prospecting Automation</div>
+                <div className="text-slate-500 text-sm mt-1">Automated lead discovery & enrichment</div>
+              </div>
+              <div className="glass rounded-2xl p-6 text-center card-hover">
+                <div className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent mb-2">60%</div>
+                <div className="text-white/80 text-base font-medium">Prep Time Reduction</div>
+                <div className="text-slate-500 text-sm mt-1">AI-generated meeting briefs & research</div>
+              </div>
+              <div className="glass rounded-2xl p-6 text-center card-hover">
+                <div className="text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">3.2</div>
+                <div className="text-white/80 text-base font-medium">Days to Signature</div>
+                <div className="text-slate-500 text-sm mt-1">Down from 7.5 days average</div>
+              </div>
+              <div className="glass rounded-2xl p-6 text-center card-hover">
+                <div className="text-5xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent mb-2">92%</div>
+                <div className="text-white/80 text-base font-medium">Forecast Accuracy</div>
+                <div className="text-slate-500 text-sm mt-1">ML-powered pipeline intelligence</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 mb-8">
+              {/* Pain Points Addressed */}
+              <div className="glass rounded-2xl p-6">
+                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                  <span className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center text-red-400 text-xl">✗</span>
+                  Pain Points Addressed
+                </h3>
+                <div className="space-y-3">
+                  {[
+                    { title: 'Manual Lead Discovery & Qualification', desc: 'Hours spent scraping, enriching, and scoring leads manually' },
+                    { title: 'Inconsistent Outreach & Follow-up', desc: 'Prospects fall through cracks without systematic multi-channel campaigns' },
+                    { title: 'Time-Consuming Meeting Prep', desc: 'AEs spend 2+ hours researching before each discovery call' },
+                    { title: 'Slow Contract Cycles', desc: 'Week-long delays in contract generation, redlining, and signature' },
+                    { title: 'Limited Pipeline Visibility', desc: 'Stalled deals and at-risk opportunities go undetected' },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 bg-white/5 rounded-xl">
+                      <div className="w-2 h-2 rounded-full bg-red-400 mt-2.5"></div>
+                      <div>
+                        <div className="text-white/90 text-base font-medium">{item.title}</div>
+                        <div className="text-slate-500 text-sm">{item.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Solution Capabilities */}
+              <div className="glass rounded-2xl p-6">
+                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                  <span className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl">✓</span>
+                  AI-Powered Solutions
+                </h3>
+                <div className="space-y-3">
+                  {[
+                    { title: 'Autonomous Lead Generation', desc: 'ICP matching, multi-source aggregation, intent signal detection, contact enrichment' },
+                    { title: 'Multi-Channel Campaign Orchestration', desc: 'Email/LinkedIn/SMS sequences with sentiment tracking and response analysis' },
+                    { title: 'Intelligent Meeting Support', desc: 'Pre-call research briefs, real-time transcription, automated summaries & action items' },
+                    { title: 'Contract Lifecycle Automation', desc: 'Template generation, redline analysis, risk flagging, e-signature routing' },
+                    { title: 'Predictive Pipeline Intelligence', desc: 'Win/loss analysis, revenue forecasting, early risk detection (+15 days)' },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 bg-white/5 rounded-xl">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 mt-2.5"></div>
+                      <div>
+                        <div className="text-white/90 text-base font-medium">{item.title}</div>
+                        <div className="text-slate-500 text-sm">{item.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Agent Suite Overview */}
+            <div className="glass rounded-2xl p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">9 Specialized Agents Working in Concert</h3>
+              <div className="grid grid-cols-9 gap-3">
+                {[
+                  { name: 'Lead Gen', color: 'emerald', desc: 'Prospecting & enrichment' },
+                  { name: 'Qualification', color: 'blue', desc: 'BANT/MEDDIC automation' },
+                  { name: 'Outreach', color: 'purple', desc: 'Multi-channel campaigns' },
+                  { name: 'Meeting', color: 'teal', desc: 'Scheduling & prep' },
+                  { name: 'Orchestrator', color: 'indigo', desc: 'Central coordination' },
+                  { name: 'Proposal', color: 'amber', desc: 'Document & ROI' },
+                  { name: 'Negotiation', color: 'rose', desc: 'Pricing & objections' },
+                  { name: 'Contract', color: 'cyan', desc: 'Lifecycle management' },
+                  { name: 'Analytics', color: 'slate', desc: 'Forecasting & insights' },
+                ].map((agent, i) => (
+                  <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-3 text-center hover:bg-white/10 transition-colors">
+                    <div className="text-white font-semibold text-sm mb-1">{agent.name}</div>
+                    <div className="text-slate-500 text-xs">{agent.desc}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between text-sm text-slate-400">
+                <span>✓ Parallel execution</span>
+                <span>✓ Context management & handoffs</span>
+                <span>✓ Human-in-the-loop controls</span>
+                <span>✓ Automatic recovery & failover</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+      // Use Case Slide Template
+      const UseCaseSlide = ({ ucData }) => (
+        <div className="slide-container bg-[#0a0a1a] p-8 pb-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-slate-900/50 to-purple-900/20"></div>
+          <div className="absolute top-0 left-1/3 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-3xl"></div>
+          
+          <div className="max-w-7xl mx-auto relative z-10">
+            <div className="mb-6">
+              <div className="inline-flex items-center gap-2 bg-blue-500/20 border border-blue-500/30 text-blue-300 px-5 py-2 rounded-full text-sm font-medium mb-3">
+                USE CASE {ucData.id}
+              </div>
+              <div className="flex items-center gap-4 mb-4">
+                <span className={`bg-${ucData.color}-500 text-white px-4 py-1.5 rounded-lg text-base font-bold`}>{ucData.id}</span>
+                <h1 className="text-4xl font-bold text-white">{ucData.title}</h1>
+                <span className="px-4 py-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg text-base font-semibold">{ucData.automation}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              {/* Persona & Pain Points */}
+              <div className="glass rounded-2xl p-6">
+                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-3">
+                  <span className="text-3xl">{ucData.persona.icon}</span>
+                  Target Persona: {ucData.persona.title}
+                </h3>
+                <p className="text-slate-400 text-base mb-6">{ucData.persona.description}</p>
+                
+                <h4 className="text-lg font-semibold text-red-400 mb-3 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center text-red-400">✗</span>
+                  Pain Points Solved
+                </h4>
+                <div className="space-y-2">
+                  {ucData.painPoints.map((pain, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 bg-red-500/10 rounded-xl border border-red-500/20">
+                      <div className="w-2 h-2 rounded-full bg-red-400 mt-2"></div>
+                      <span className="text-white/90 text-base">{pain}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Inputs & Outputs */}
+              <div className="space-y-4">
+                <div className="glass rounded-2xl p-6">
+                  <h4 className="text-lg font-semibold text-blue-400 mb-3 flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">📥</span>
+                    Required Inputs
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {ucData.inputs.map((input, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2.5 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                        <span className="text-blue-400 font-bold">→</span>
+                        <span className="text-white/90 text-sm">{input}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="glass rounded-2xl p-6">
+                  <h4 className="text-lg font-semibold text-emerald-400 mb-3 flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">📤</span>
+                    Outputs & Outcomes
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {ucData.outputs.map((output, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                        <span className="text-emerald-400 font-bold">✓</span>
+                        <span className="text-white/90 text-sm">{output}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Architecture Components & Workflow */}
+            <div className="grid grid-cols-3 gap-6 mb-6">
+              <div className="glass rounded-2xl p-6">
+                <h4 className="text-lg font-semibold text-purple-400 mb-3 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">🔧</span>
+                  Architecture Components
+                </h4>
+                <div className="space-y-2">
+                  {ucData.architecture.map((comp, i) => (
+                    <div key={i} className="p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                      <div className="text-white font-semibold text-sm">{comp.name}</div>
+                      <div className="text-slate-400 text-xs mt-1">{comp.role}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="glass rounded-2xl p-6">
+                <h4 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">⚡</span>
+                  Workflow Steps
+                </h4>
+                <div className="space-y-2">
+                  {ucData.workflow.map((step, i) => (
+                    <div key={i} className="flex items-start gap-3 p-2.5 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
+                      <div className="w-6 h-6 rounded-full bg-cyan-500/30 text-cyan-400 flex items-center justify-center text-xs font-bold flex-shrink-0">{i + 1}</div>
+                      <span className="text-white/90 text-sm">{step}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="glass rounded-2xl p-6">
+                <h4 className="text-lg font-semibold text-amber-400 mb-3 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">⚠️</span>
+                  Exception Handling
+                </h4>
+                <div className="space-y-2">
+                  {ucData.exceptions.map((exc, i) => (
+                    <div key={i} className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                      <div className="text-amber-400 font-semibold text-sm">{exc.condition}</div>
+                      <div className="text-white/80 text-xs mt-1">→ {exc.action}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Human-in-Loop */}
+            <div className="glass rounded-xl p-5">
+              <h4 className="text-base font-semibold text-slate-300 mb-2 flex items-center gap-2">
+                <span className="w-6 h-6 rounded bg-white/10 flex items-center justify-center text-sm">👤</span>
+                Human-in-the-Loop Checkpoints
+              </h4>
+              <p className="text-slate-400 text-base">{ucData.humanInLoop}</p>
+            </div>
+          </div>
+        </div>
+      );
+
+      // Use Case Data
+      const useCasesData = [
+        {
+          id: 'UC-01',
+          title: 'Automated Prospecting at Scale',
+          color: 'blue',
+          automation: '95% Auto',
+          persona: {
+            icon: '👤',
+            title: 'Sales Development Rep (SDR)',
+            description: 'Responsible for top-of-funnel lead generation and initial qualification. Spends 60%+ of time on manual research and data entry.'
+          },
+          painPoints: [
+            'Manually scraping company data from multiple sources',
+            'Time-consuming lead enrichment (2+ hours/day)',
+            'Inconsistent lead scoring causing missed opportunities',
+            'High-quality leads buried in noise'
+          ],
+          inputs: [
+            'ICP criteria definition',
+            'Daily lead target (e.g., 50 leads)',
+            'Industry filters',
+            'Company size parameters',
+            'Funding stage requirements',
+            'Geographic targeting'
+          ],
+          outputs: [
+            '50+ qualified leads/day',
+            'Lead scores (70+ threshold)',
+            '80%+ accuracy rate',
+            'Enriched contact profiles',
+            'CRM records created',
+            'Intent signals flagged'
+          ],
+          architecture: [
+            { name: 'Lead Generation Agent', role: 'Scrapes, aggregates, and enriches lead data' },
+            { name: 'Qualification Agent', role: 'BANT framework validation' },
+            { name: 'Master Orchestrator', role: 'Routes qualified leads to CRM' },
+            { name: 'Vector Database', role: 'Stores embeddings for ICP matching' },
+            { name: 'External APIs', role: 'ZoomInfo, Apollo.io, Clearbit integration' }
+          ],
+          workflow: [
+            'SDR defines ICP criteria in dashboard',
+            'Lead Gen Agent scrapes target companies',
+            'Data enrichment via external APIs',
+            'ICP scoring algorithm (ML-based)',
+            'Qualification Agent validates BANT',
+            'Orchestrator routes to CRM pipeline'
+          ],
+          exceptions: [
+            { condition: 'Lead score < 50', action: 'Auto-disqualify, add to nurture list' },
+            { condition: 'Missing contact email', action: 'Queue for manual enrichment' },
+            { condition: 'Duplicate detected', action: 'Merge with existing record' },
+            { condition: 'API rate limit hit', action: 'Implement exponential backoff' }
+          ],
+          humanInLoop: 'SDR reviews daily lead batch, manually approves high-value prospects (deal size >$50K) before outreach begins, and can override AI qualification decisions.'
+        },
+        {
+          id: 'UC-02',
+          title: 'Personalized Multi-Channel Campaigns',
+          color: 'purple',
+          automation: '85% Auto',
+          persona: {
+            icon: '👤💼',
+            title: 'SDR + Account Executive (AE)',
+            description: 'SDR initiates outreach, AE engages on high-value prospects. Both struggle with maintaining consistent follow-up across channels.'
+          },
+          painPoints: [
+            'Prospects fall through cracks without systematic follow-up',
+            'Generic messaging leads to low response rates (<5%)',
+            'Manual tracking across Email, LinkedIn, SMS is error-prone',
+            'No visibility into optimal send times or channel preferences'
+          ],
+          inputs: [
+            'Qualified lead data',
+            'Company research brief',
+            'Persona-specific templates',
+            'Channel preferences',
+            'Sequence timing rules',
+            'Personalization variables'
+          ],
+          outputs: [
+            '25% response rate',
+            '8% meeting booking rate',
+            '65% positive sentiment',
+            'Multi-touch engagement history',
+            'Channel performance analytics',
+            'Optimized send times'
+          ],
+          architecture: [
+            { name: 'Outreach Agent', role: 'Analyzes prospects and generates personalized messages' },
+            { name: 'Meeting Agent', role: 'Handles scheduling upon positive response' },
+            { name: 'Analytics Agent', role: 'Tracks sentiment and engagement metrics' },
+            { name: 'Communication APIs', role: 'Gmail, LinkedIn Sales Nav, Twilio SMS' },
+            { name: 'NLP Engine', role: 'Sentiment analysis and response classification' }
+          ],
+          workflow: [
+            'Lead enters "Outreach" stage in CRM',
+            'Outreach Agent analyzes prospect profile',
+            'Personalized message generated (AI + templates)',
+            'Day 1: Email sent with tracking',
+            'Day 3: LinkedIn connection request',
+            'Day 7: SMS follow-up (if enabled)',
+            'Response detection triggers Meeting Agent'
+          ],
+          exceptions: [
+            { condition: 'Email bounce detected', action: 'Mark contact invalid, find alternate email' },
+            { condition: 'Negative sentiment response', action: 'Escalate to AE immediately' },
+            { condition: 'Out-of-office reply', action: 'Reschedule sequence, update CRM' },
+            { condition: 'Unsubscribe request', action: 'Remove from sequence, update preferences' }
+          ],
+          humanInLoop: 'SDR can preview/edit messages before send, manually intervenes on VIP prospects (C-level, Fortune 500), and reviews AI-suggested personalization.'
+        },
+        {
+          id: 'UC-03',
+          title: 'AI-Assisted Discovery Meetings',
+          color: 'teal',
+          automation: '70% Auto',
+          persona: {
+            icon: '💼',
+            title: 'Account Executive (AE)',
+            description: 'Conducts discovery calls and demos. Currently spends 2+ hours preparing for each meeting by manually researching companies and contacts.'
+          },
+          painPoints: [
+            'Excessive meeting prep time (2+ hours/meeting)',
+            'Inconsistent research quality across team',
+            'No real-time assistance during calls',
+            'Manual note-taking leads to incomplete records'
+          ],
+          inputs: [
+            'Calendar event details',
+            'Attendee information',
+            'Company CRM history',
+            'Previous interactions',
+            'Industry news/triggers',
+            'Competitor intelligence'
+          ],
+          outputs: [
+            '100% meetings with pre-briefs',
+            '98% transcription accuracy',
+            '60% prep time reduction',
+            'Automated meeting summaries',
+            'Action items extracted',
+            'CRM auto-updated'
+          ],
+          architecture: [
+            { name: 'Meeting Agent', role: 'Scheduling, prep, and follow-up coordination' },
+            { name: 'Analytics Agent', role: 'Company research and intelligence gathering' },
+            { name: 'Transcription Engine', role: 'Real-time speech-to-text processing' },
+            { name: 'NLP Summarizer', role: 'Extracts key points and action items' },
+            { name: 'Calendar Integration', role: 'Google Calendar, Outlook sync' }
+          ],
+          workflow: [
+            'Discovery call scheduled on calendar',
+            'Meeting Agent generates research brief (T-24h)',
+            'Talking points and discovery questions prepared',
+            'AE conducts meeting with live transcription',
+            'Real-time entity/topic extraction',
+            'Post-meeting summary within 1 hour',
+            'CRM updated with notes and next steps'
+          ],
+          exceptions: [
+            { condition: 'Meeting rescheduled', action: 'Auto-update brief timing, re-send reminders' },
+            { condition: 'Attendee added last-minute', action: 'Quick research brief append' },
+            { condition: 'Transcription failure', action: 'Switch to fallback provider, notify AE' },
+            { condition: 'Sensitive topic detected', action: 'Flag for legal review before sharing' }
+          ],
+          humanInLoop: 'AE conducts the live meeting, reviews/edits AI-generated summary before sending to prospect, and approves action items before CRM sync.'
+        },
+        {
+          id: 'UC-04',
+          title: 'AI-Guided Pricing Negotiation',
+          color: 'rose',
+          automation: '60% Auto',
+          persona: {
+            icon: '💼📊',
+            title: 'Account Executive + Sales Manager',
+            description: 'AE handles day-to-day negotiations, Manager approves significant discounts. Both lack real-time margin visibility and counter-offer guidance.'
+          },
+          painPoints: [
+            'Discounts given without margin impact visibility',
+            'Inconsistent pricing across deals of similar size',
+            'Slow approval process for non-standard terms',
+            'Lost revenue from over-discounting'
+          ],
+          inputs: [
+            'Discount request (email/call)',
+            'Deal size and terms',
+            'Customer segment/tier',
+            'Historical pricing data',
+            'Margin thresholds',
+            'Competitive positioning'
+          ],
+          outputs: [
+            '40% requests auto-handled',
+            'Average discount: 12%',
+            '+25% deal velocity',
+            'Margin-optimized counter-offers',
+            'Manager approval routing',
+            'Pricing consistency'
+          ],
+          architecture: [
+            { name: 'Negotiation Agent', role: 'Detects requests, calculates margins, generates counters' },
+            { name: 'Proposal Agent', role: 'Updates pricing scenarios in proposals' },
+            { name: 'Analytics Agent', role: 'Historical deal analysis and benchmarking' },
+            { name: 'Approval Workflow', role: 'Manager routing for high-value discounts' },
+            { name: 'Pricing Engine', role: 'Real-time margin calculation and optimization' }
+          ],
+          workflow: [
+            'Prospect requests discount via email',
+            'Negotiation Agent detects and classifies request',
+            'Real-time margin calculation',
+            'Check discount authority (≤15% = auto)',
+            'Generate data-driven counter-offer',
+            'Route to manager if >15% discount',
+            'AE reviews and sends response'
+          ],
+          exceptions: [
+            { condition: 'Discount >15% requested', action: 'Route to Sales Manager for approval' },
+            { condition: 'Deal size >$100K', action: 'Require VP approval for any discount' },
+            { condition: 'Competitive threat mentioned', action: 'Flag for strategic pricing review' },
+            { condition: 'Multi-year contract', action: 'Apply different discount matrix' }
+          ],
+          humanInLoop: 'Sales Manager approves discounts >15%, AE reviews AI-generated counter-offer before sending, and strategic accounts require executive sign-off.'
+        },
+        {
+          id: 'UC-05',
+          title: 'Automated Contract Lifecycle',
+          color: 'cyan',
+          automation: '75% Auto',
+          persona: {
+            icon: '💼⚖️',
+            title: 'Account Executive + Legal Team',
+            description: 'AE initiates contracts, Legal reviews non-standard terms. Current process takes 7+ days with multiple back-and-forth cycles.'
+          },
+          painPoints: [
+            'Manual contract generation from templates (1-2 hours)',
+            'Week-long delays waiting for legal review',
+            'Inconsistent terms across similar deals',
+            'Signature tracking across email chains'
+          ],
+          inputs: [
+            'Verbal agreement/deal terms',
+            'Contract template selection',
+            'Custom clause requirements',
+            'Signatory information',
+            'Legal compliance checklist',
+            'E-signature preferences'
+          ],
+          outputs: [
+            'Contract sent <30 minutes',
+            '85% auto-approved',
+            '3.2 days to signature',
+            'Risk clauses flagged',
+            'Legal routing automated',
+            'Full audit trail'
+          ],
+          architecture: [
+            { name: 'Contract Agent', role: 'Template selection, generation, and redline analysis' },
+            { name: 'Legal Compliance Engine', role: 'Clause risk scoring and flagging' },
+            { name: 'E-Signature Integration', role: 'DocuSign, PandaDoc routing' },
+            { name: 'Document Storage', role: 'Version control and audit logging' },
+            { name: 'Notification Service', role: 'Signature status alerts' }
+          ],
+          workflow: [
+            'AE clicks "Generate Contract" in CRM',
+            'Contract Agent selects appropriate template',
+            'Deal terms auto-populated from opportunity',
+            'Legal compliance scan for risk clauses',
+            'Standard contracts: Auto-send via DocuSign',
+            'Non-standard: Route to Legal queue',
+            'Track signature status, send reminders',
+            'Update CRM to "Closed-Won" on completion'
+          ],
+          exceptions: [
+            { condition: 'Non-standard clause detected', action: 'Flag for Legal review, pause workflow' },
+            { condition: 'High-risk terms (liability, IP)', action: 'Require Legal Counsel approval' },
+            { condition: 'Signature stalled >3 days', action: 'Escalate to AE, send reminder' },
+            { condition: 'Contract rejected', action: 'Notify AE, create redline task' }
+          ],
+          humanInLoop: 'AE reviews contract before initial send, Legal reviews non-standard clauses and high-risk terms, both parties sign electronically with final approval.'
+        },
+        {
+          id: 'UC-06',
+          title: 'Predictive Pipeline Intelligence',
+          color: 'emerald',
+          automation: '90% Auto',
+          persona: {
+            icon: '📊',
+            title: 'Sales Manager',
+            description: 'Oversees team performance and pipeline health. Currently relies on manual CRM reports that are often outdated and lack predictive insights.'
+          },
+          painPoints: [
+            'Pipeline reports are backward-looking only',
+            'At-risk deals identified too late',
+            'Forecast accuracy below 70%',
+            'No early warning system for stalled deals'
+          ],
+          inputs: [
+            'CRM opportunity data',
+            'Activity history',
+            'Email engagement metrics',
+            'Meeting outcomes',
+            'Historical win/loss patterns',
+            'Market/seasonal factors'
+          ],
+          outputs: [
+            '92% forecast accuracy',
+            'Real-time pipeline visibility',
+            '+15 days early detection',
+            'At-risk deal alerts',
+            'Rep coaching insights',
+            'Executive summary reports'
+          ],
+          architecture: [
+            { name: 'Analytics Agent', role: 'Aggregates data, runs ML models, generates insights' },
+            { name: 'ML Forecasting Engine', role: 'Win probability and revenue prediction' },
+            { name: 'Alert System', role: 'Real-time notifications for at-risk deals' },
+            { name: 'Dashboard Service', role: 'Executive and manager views' },
+            { name: 'CRM Integration', role: 'Bidirectional sync with Salesforce/HubSpot' }
+          ],
+          workflow: [
+            'Scheduled run: Every Monday 8am',
+            'Aggregate pipeline data from CRM',
+            'Run ML forecast models',
+            'Identify at-risk deals (no activity >14 days)',
+            'Flag stalled opportunities',
+            'Generate executive summary',
+            'Push alerts to Slack/Email',
+            'Update dashboard views'
+          ],
+          exceptions: [
+            { condition: 'Deal stalled >30 days', action: 'Send re-engagement campaign automatically' },
+            { condition: 'Win probability drops >20%', action: 'Alert AE and Manager immediately' },
+            { condition: 'Quarter-end approaching', action: 'Increase monitoring frequency to daily' },
+            { condition: 'Data quality issues', action: 'Flag incomplete records for rep review' }
+          ],
+          humanInLoop: 'Sales Manager reviews AI insights, adjusts forecasts based on qualitative factors not captured in data, and coaches reps on at-risk deals.'
+        }
+      ];
+
+      // User Flow Slide Template
+      const UserFlowSlide = ({ flowData }) => (
+        <div className="slide-container bg-[#0a0a1a] p-8 pb-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-slate-900/50 to-emerald-900/20"></div>
+          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-3xl"></div>
+          
+          <div className="max-w-7xl mx-auto relative z-10">
+            <div className="mb-6">
+              <div className="inline-flex items-center gap-2 bg-purple-500/20 border border-purple-500/30 text-purple-300 px-5 py-2 rounded-full text-sm font-medium mb-3">
+                USER FLOW {flowData.id}
+              </div>
+              <div className="flex items-center gap-4">
+                <span className={`px-4 py-2 bg-${flowData.color}-500 text-white text-base font-bold rounded-lg`}>Flow {flowData.id}</span>
+                <h1 className="text-4xl font-bold text-white">{flowData.title}</h1>
+              </div>
+            </div>
+
+            {/* Flow Steps */}
+            <div className="grid grid-cols-4 gap-4 mb-6">
+              {flowData.steps.map((step, i) => (
+                <div key={i} className="glass rounded-2xl p-5 relative">
+                  {i < flowData.steps.length - 1 && (
+                    <div className="absolute top-1/2 -right-4 transform -translate-y-1/2 text-slate-600 text-3xl font-bold z-10">→</div>
+                  )}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className={`w-10 h-10 rounded-full bg-${flowData.color}-500/30 text-${flowData.color}-400 flex items-center justify-center text-lg font-bold`}>{step.step}</div>
+                    <h4 className="font-bold text-white text-lg">{step.title}</h4>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <div className="text-sm font-semibold text-purple-400 mb-2">Agent: {step.agent}</div>
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="text-sm font-semibold text-blue-400 mb-2">Inputs:</div>
+                    <div className="space-y-1.5">
+                      {step.inputs.map((input, j) => (
+                        <div key={j} className="flex items-start gap-2 pl-2">
+                          <span className="text-blue-400 mt-0.5">•</span>
+                          <span className="text-slate-300 text-sm">{input}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="text-sm font-semibold text-emerald-400 mb-2">Outputs:</div>
+                    <div className="space-y-1.5">
+                      {step.outputs.map((output, j) => (
+                        <div key={j} className="flex items-start gap-2 pl-2">
+                          <span className="text-emerald-400 mt-0.5">✓</span>
+                          <span className="text-slate-300 text-sm">{output}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                    <div className="text-sm font-semibold text-amber-400 mb-1">Outcome:</div>
+                    <p className="text-white/80 text-sm">{step.outcome}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Human Touch Points & Exceptions */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="glass rounded-xl p-5">
+                <h4 className="text-lg font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded bg-white/10 flex items-center justify-center">👤</span>
+                  Human Touch Points
+                </h4>
+                <div className="space-y-2">
+                  {flowData.humanTouchPoints.map((point, i) => (
+                    <div key={i} className="flex items-start gap-3 p-2.5 bg-white/5 rounded-lg">
+                      <span className="text-indigo-400 mt-0.5">●</span>
+                      <span className="text-slate-300 text-base">{point}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="glass rounded-xl p-5">
+                <h4 className="text-lg font-semibold text-amber-400 mb-3 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded bg-amber-500/20 flex items-center justify-center">⚠️</span>
+                  Exception Handling
+                </h4>
+                <div className="space-y-2">
+                  {flowData.exceptions.map((exc, i) => (
+                    <div key={i} className="p-2.5 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                      <div className="text-amber-400 font-semibold text-sm">{exc.condition}</div>
+                      <div className="text-white/70 text-sm mt-1">→ {exc.action}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+      // User Flows Data
+      const userFlowsData = [
+        {
+          id: '1',
+          title: 'Lead-to-Opportunity Conversion',
+          color: 'emerald',
+          steps: [
+            {
+              step: 1,
+              title: 'Lead Discovery',
+              agent: 'Lead Generation Agent',
+              inputs: ['ICP criteria', 'Industry filters', 'Company size range', 'Intent signal sources'],
+              outputs: ['Enriched company profile', 'Contact information', 'Firmographic data', 'Intent score'],
+              outcome: 'Raw lead identified with complete profile and initial scoring'
+            },
+            {
+              step: 2,
+              title: 'Qualification',
+              agent: 'Qualification Agent',
+              inputs: ['Lead profile', 'BANT framework', 'Scoring thresholds', 'Historical patterns'],
+              outputs: ['Qualified/Disqualified status', 'BANT scores', 'Qualification notes', 'Recommended next steps'],
+              outcome: 'Lead validated against qualification criteria with documented rationale'
+            },
+            {
+              step: 3,
+              title: 'Initial Outreach',
+              agent: 'Outreach Agent',
+              inputs: ['Qualified lead data', 'Persona templates', 'Channel rules', 'Timing preferences'],
+              outputs: ['Personalized message', 'Engagement tracking', 'Response detection', 'Sentiment classification'],
+              outcome: 'First touch completed with prospect, engagement monitored'
+            },
+            {
+              step: 4,
+              title: 'Opportunity Created',
+              agent: 'Master Orchestrator',
+              inputs: ['Positive response', 'Lead data', 'Owner assignment rules', 'Pipeline stage logic'],
+              outputs: ['CRM opportunity record', 'Deal owner assigned', 'Stage set', 'Next workflow triggered'],
+              outcome: 'Active opportunity in pipeline with clear ownership and next actions'
+            }
+          ],
+          humanTouchPoints: [
+            'Sales rep reviews qualification notes before approval',
+            'Optional manual approval before automated outreach',
+            'Rep notification on positive response for immediate follow-up',
+            'Override capability for AI qualification decisions'
+          ],
+          exceptions: [
+            { condition: 'Lead score below threshold', action: 'Auto-add to nurture sequence, re-qualify in 30 days' },
+            { condition: 'Contact info invalid', action: 'Queue for manual research, mark data quality flag' },
+            { condition: 'Negative response received', action: 'Move to "Not Now" status, schedule future re-engagement' }
+          ]
+        },
+        {
+          id: '2',
+          title: 'Meeting-to-Proposal Journey',
+          color: 'teal',
+          steps: [
+            {
+              step: 1,
+              title: 'Meeting Scheduling',
+              agent: 'Meeting Agent',
+              inputs: ['Calendar availability', 'Prospect preferences', 'Meeting type', 'Attendee list'],
+              outputs: ['Calendar invite sent', 'Confirmation received', 'Reminder sequence', 'Prep timeline set'],
+              outcome: 'Meeting confirmed with all parties, prep workflow initiated'
+            },
+            {
+              step: 2,
+              title: 'Pre-Meeting Research',
+              agent: 'Meeting Agent + Analytics Agent',
+              inputs: ['Company CRM data', 'News/PR feeds', 'LinkedIn activity', 'Previous interactions'],
+              outputs: ['Research brief', 'Talking points', 'Pain point hypotheses', 'Discovery questions'],
+              outcome: 'AE fully prepared with comprehensive prospect intelligence'
+            },
+            {
+              step: 3,
+              title: 'Meeting Execution',
+              agent: 'Human (AE) + Real-time AI Support',
+              inputs: ['Research brief', 'Discovery framework', 'Audio stream', 'Topic detection'],
+              outputs: ['Live transcription', 'Real-time insights', 'Key topic flags', 'Question suggestions'],
+              outcome: 'Productive discovery call with complete conversation capture'
+            },
+            {
+              step: 4,
+              title: 'Proposal Generation',
+              agent: 'Proposal Agent',
+              inputs: ['Meeting summary', 'Requirements captured', 'Pricing rules', 'Case study library'],
+              outputs: ['Custom proposal PDF', 'ROI calculations', 'Pricing options', 'Relevant case studies'],
+              outcome: 'Professional, personalized proposal ready for delivery'
+            }
+          ],
+          humanTouchPoints: [
+            'AE conducts the live discovery meeting',
+            'AE reviews AI-generated meeting summary for accuracy',
+            'AE approves proposal content and pricing before sending',
+            'AE personalizes proposal cover letter and executive summary'
+          ],
+          exceptions: [
+            { condition: 'Meeting rescheduled', action: 'Auto-update calendar, recalculate prep timeline' },
+            { condition: 'Key stakeholder missing', action: 'Flag for reschedule consideration, adjust talking points' },
+            { condition: 'Requirements unclear', action: 'Generate clarification email, schedule follow-up call' }
+          ]
+        },
+        {
+          id: '3',
+          title: 'Negotiation-to-Close Process',
+          color: 'rose',
+          steps: [
+            {
+              step: 1,
+              title: 'Objection Detection',
+              agent: 'Negotiation Agent',
+              inputs: ['Email responses', 'Call transcripts', 'Objection taxonomy', 'Counter-argument library'],
+              outputs: ['Objection classified', 'Counter-arguments retrieved', 'Response draft', 'Confidence score'],
+              outcome: 'Objection handled with data-driven response strategy'
+            },
+            {
+              step: 2,
+              title: 'Pricing Optimization',
+              agent: 'Negotiation Agent',
+              inputs: ['Discount request', 'Deal parameters', 'Margin rules', 'Historical benchmarks'],
+              outputs: ['Margin impact analysis', 'Counter-offer options', 'Approval routing', 'Recommendation'],
+              outcome: 'Margin-optimized pricing with appropriate approval flow'
+            },
+            {
+              step: 3,
+              title: 'Contract Generation',
+              agent: 'Contract Agent',
+              inputs: ['Agreed terms', 'Template library', 'Custom clauses', 'Compliance rules'],
+              outputs: ['Generated contract', 'Risk flags', 'Legal routing', 'E-sign package'],
+              outcome: 'Compliant contract ready for signature'
+            },
+            {
+              step: 4,
+              title: 'E-Signature & Close',
+              agent: 'Contract Agent',
+              inputs: ['Final contract', 'Signatory info', 'Routing order', 'Reminder schedule'],
+              outputs: ['DocuSign sent', 'Status tracking', 'Signature reminders', 'CRM update'],
+              outcome: 'Deal closed, CRM updated to Closed-Won'
+            }
+          ],
+          humanTouchPoints: [
+            'AE reviews and approves AI objection responses',
+            'Sales Manager approves discounts exceeding 15%',
+            'Legal reviews non-standard contract clauses',
+            'Both parties execute electronic signatures'
+          ],
+          exceptions: [
+            { condition: 'Discount >20% requested', action: 'Escalate to VP Sales, pause automated responses' },
+            { condition: 'Non-standard legal terms', action: 'Route to Legal queue, notify AE of delay' },
+            { condition: 'Signature stalled', action: 'Escalate to AE after 3 days, send automated reminder' },
+            { condition: 'Contract rejected', action: 'Create redline task, notify AE for negotiation' }
+          ]
+        }
+      ];
+
+      // Slide 11: Architecture (same as before but with larger fonts)
+      const ArchitectureSlide = () => (
+        <div className="slide-container bg-[#0a0a1a] p-6 pb-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-slate-900/50 to-cyan-900/20"></div>
+          <div className="absolute top-1/3 left-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl"></div>
+          
+          <div className="max-w-7xl mx-auto relative z-10">
+            <div className="mb-4">
+              <div className="inline-flex items-center gap-2 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-5 py-2 rounded-full text-sm font-medium mb-3">
+                SYSTEM ARCHITECTURE
+              </div>
+              <h1 className="text-4xl font-bold text-white mb-2">AI Seller System Architecture</h1>
+              <p className="text-slate-400 text-lg">Multi-Agent Orchestration for End-to-End Sales Lifecycle</p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Layer 1: Client Interface */}
+              <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 text-center">
+                <h3 className="text-xl font-semibold text-rose-400 mb-1">Client Interface</h3>
+                <p className="text-base text-slate-400">Web App, CLI, Slack Bot, API, CRM Integration</p>
+              </div>
+
+              <div className="flex justify-center"><div className="w-px h-4 bg-gradient-to-b from-rose-500/50 to-cyan-500/50"></div></div>
+
+              {/* Layer 2: LLM */}
+              <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4 text-center">
+                <h3 className="text-xl font-semibold text-cyan-400 mb-2">LLM Model (Reasoning Engine)</h3>
+                <div className="flex justify-center gap-6 text-sm text-slate-400">
+                  <span>• Intent classification & routing</span>
+                  <span>• Sales strategy generation</span>
+                  <span>• Natural language understanding</span>
+                  <span>• Response synthesis & personalization</span>
+                </div>
+              </div>
+
+              <div className="flex justify-center"><div className="w-px h-4 bg-gradient-to-b from-cyan-500/50 to-amber-500/50"></div></div>
+
+              {/* Layer 3: Prompt Assembly */}
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-center">
+                <h3 className="text-xl font-semibold text-amber-400 mb-1">Prompt Assembly & Context Injection</h3>
+                <p className="text-base text-slate-400">Construct prompts with lead data, conversation history, sales playbooks, and compliance rules</p>
+              </div>
+
+              <div className="flex justify-center"><div className="w-px h-4 bg-gradient-to-b from-amber-500/50 to-purple-500/50"></div></div>
+
+              {/* Layer 4: Crew Orchestration */}
+              <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-5">
+                <h3 className="text-2xl font-semibold text-purple-400 text-center mb-2">Crew AI Orchestration Layer</h3>
+                <p className="text-center text-base text-slate-400 mb-4">Multi-Agent Coordination & Task Distribution</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <h4 className="font-semibold text-white text-base mb-2">Plan Engine</h4>
+                    <ul className="text-sm text-slate-400 space-y-1">
+                      <li>• Sales task decomposition</li>
+                      <li>• Dependency mapping</li>
+                      <li>• Priority sequencing</li>
+                    </ul>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <h4 className="font-semibold text-white text-base mb-2">Routing Decisions</h4>
+                    <ul className="text-sm text-slate-400 space-y-1">
+                      <li>• Agent selection logic</li>
+                      <li>• Task flow optimization</li>
+                      <li>• Resource allocation</li>
+                    </ul>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <h4 className="font-semibold text-white text-base mb-2">Execution Monitor</h4>
+                    <ul className="text-sm text-slate-400 space-y-1">
+                      <li>• Progress tracking</li>
+                      <li>• Success/fail criteria</li>
+                      <li>• Retry/fallback logic</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-center"><div className="w-px h-4 bg-gradient-to-b from-purple-500/50 to-yellow-500/50"></div></div>
+
+              {/* Layer 5: State & Memory Management */}
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-5">
+                <h3 className="text-2xl font-semibold text-yellow-400 text-center mb-2">State & Memory Management</h3>
+                <p className="text-center text-base text-slate-400 mb-4">Shared context, conversation history, sales intelligence, lead profiles</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <h4 className="font-semibold text-white text-base mb-2">Lead Intelligence</h4>
+                    <ul className="text-sm text-slate-400 space-y-1">
+                      <li>• Vector embeddings</li>
+                      <li>• Enrichment data</li>
+                      <li>• Scoring models</li>
+                    </ul>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <h4 className="font-semibold text-white text-base mb-2">Sales Playbooks</h4>
+                    <ul className="text-sm text-slate-400 space-y-1">
+                      <li>• Best practices</li>
+                      <li>• Templates</li>
+                      <li>• Objection handling scripts</li>
+                    </ul>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <h4 className="font-semibold text-white text-base mb-2">Conversation Memory</h4>
+                    <ul className="text-sm text-slate-400 space-y-1">
+                      <li>• Session state</li>
+                      <li>• Interaction history</li>
+                      <li>• Sentiment tracking</li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="text-center text-sm text-yellow-400/70 italic mt-3">Direct context retrieval • Memory updates • Cache queries • Session state checks</div>
+              </div>
+
+              <div className="flex justify-center"><div className="w-px h-4 bg-gradient-to-b from-yellow-500/50 to-indigo-500/50"></div></div>
+
+              {/* Layer 6: Agent Worker Pool */}
+              <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-5">
+                <h3 className="text-2xl font-semibold text-indigo-400 text-center mb-2">Sales Agent Worker Pool</h3>
+                <p className="text-center text-base text-slate-400 mb-4">Specialized agents for autonomous sales execution</p>
+                <div className="grid grid-cols-8 gap-2">
+                  {[
+                    { name: 'Lead Gen', desc: 'Prospecting, enrichment' },
+                    { name: 'Qualification', desc: 'BANT/MEDDIC' },
+                    { name: 'Outreach', desc: 'Multi-channel' },
+                    { name: 'Meeting', desc: 'Scheduling, prep' },
+                    { name: 'Negotiation', desc: 'Pricing, objections' },
+                    { name: 'Proposal', desc: 'Docs, ROI calc' },
+                    { name: 'Contract', desc: 'Redlining, e-sign' },
+                    { name: 'Analytics', desc: 'Forecasting' },
+                  ].map((a, i) => (
+                    <div key={i} className="bg-white/5 rounded-lg p-3 border border-white/10 text-center">
+                      <h4 className="font-medium text-white text-sm mb-0.5">{a.name}</h4>
+                      <p className="text-xs text-slate-500">{a.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-center"><div className="w-px h-4 bg-gradient-to-b from-indigo-500/50 to-blue-500/50"></div></div>
+
+              {/* Layer 7: External Integration */}
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-5">
+                <h3 className="text-2xl font-semibold text-blue-400 text-center mb-4">External Integration Layer</h3>
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                    <h4 className="font-semibold text-white text-sm mb-1">CRM Systems</h4>
+                    <p className="text-sm text-slate-400">Salesforce, HubSpot, Pipedrive</p>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                    <h4 className="font-semibold text-white text-sm mb-1">Communication</h4>
+                    <p className="text-sm text-slate-400">Email, LinkedIn, SMS, Slack</p>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                    <h4 className="font-semibold text-white text-sm mb-1">Data Enrichment</h4>
+                    <p className="text-sm text-slate-400">Clearbit, ZoomInfo, Apollo</p>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                    <h4 className="font-semibold text-white text-sm mb-1">Calendar & Docs</h4>
+                    <p className="text-sm text-slate-400">Google, DocuSign, PandaDoc</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Notes */}
+              <div className="grid grid-cols-3 gap-3 mt-4">
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                  <h4 className="font-semibold text-red-400 text-base mb-3 flex items-center gap-2">
+                    <span>🔒</span> Security & Compliance
+                  </h4>
+                  <ul className="text-sm text-slate-400 space-y-1.5">
+                    <li className="flex items-start gap-2"><span className="text-red-400 mt-0.5">•</span>Data encryption (at rest & in transit)</li>
+                    <li className="flex items-start gap-2"><span className="text-red-400 mt-0.5">•</span>GDPR/SOC2 compliance checks</li>
+                    <li className="flex items-start gap-2"><span className="text-red-400 mt-0.5">•</span>Role-based access control</li>
+                    <li className="flex items-start gap-2"><span className="text-red-400 mt-0.5">•</span>Audit logging</li>
+                  </ul>
+                </div>
+                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
+                  <h4 className="font-semibold text-emerald-400 text-base mb-3 flex items-center gap-2">
+                    <span>👤</span> Human-in-the-Loop
+                  </h4>
+                  <ul className="text-sm text-slate-400 space-y-1.5">
+                    <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">•</span>Approval workflows for contracts</li>
+                    <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">•</span>Manager review for pricing</li>
+                    <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">•</span>Exception handling escalation</li>
+                    <li className="flex items-start gap-2"><span className="text-emerald-400 mt-0.5">•</span>Training data annotation</li>
+                  </ul>
+                </div>
+                <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+                  <h4 className="font-semibold text-purple-400 text-base mb-3 flex items-center gap-2">
+                    <span>🔄</span> Continuous Learning
+                  </h4>
+                  <ul className="text-sm text-slate-400 space-y-1.5">
+                    <li className="flex items-start gap-2"><span className="text-purple-400 mt-0.5">•</span>Win/loss analysis feedback</li>
+                    <li className="flex items-start gap-2"><span className="text-purple-400 mt-0.5">•</span>A/B testing campaigns</li>
+                    <li className="flex items-start gap-2"><span className="text-purple-400 mt-0.5">•</span>Model fine-tuning pipeline</li>
+                    <li className="flex items-start gap-2"><span className="text-purple-400 mt-0.5">•</span>Performance benchmarking</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+      // Slide 12: Agent Suite
+      const AgentSuiteSlide = () => (
+        <div className="slide-container bg-[#0a0a1a] p-6 pb-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/20 via-slate-900/50 to-indigo-900/20"></div>
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-3xl"></div>
+          
+          <div className="max-w-7xl mx-auto relative z-10">
+            <div className="mb-4">
+              <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 px-5 py-2 rounded-full text-sm font-medium mb-3">
+                MULTI-AGENT ARCHITECTURE
+              </div>
+              <h1 className="text-4xl font-bold text-white mb-2">AI Seller Agent Suite</h1>
+              <p className="text-slate-400 text-lg">Master Orchestrator coordinates specialized sales agents across the entire deal lifecycle</p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              {[
+                { name: 'Lead Generation Agent', tag: 'Prospector', color: 'emerald', desc: 'AI-powered lead discovery and enrichment', items: ['ICP matching & scoring', 'Multi-source data aggregation', 'Intent signal detection', 'Contact enrichment & validation', 'Account prioritization'] },
+                { name: 'Master Orchestrator', tag: 'Coordinator', color: 'indigo', desc: 'Central intelligence coordinating all sales agents', items: ['Deal stage classification', 'Agent task assignment & routing', 'Context management & handoffs', 'Strategy optimization', 'Performance monitoring'], core: true },
+                { name: 'Qualification Agent', tag: 'Qualifier', color: 'blue', desc: 'BANT/MEDDIC qualification automation', items: ['Qualification framework execution', 'Discovery question generation', 'Budget & timeline assessment', 'Decision-maker mapping', 'Opportunity scoring'] },
+                { name: 'Outreach Agent', tag: 'Communicator', color: 'purple', desc: 'Multi-channel campaign orchestration', items: ['Personalized message generation', 'Email/LinkedIn/SMS sequences', 'Response detection & analysis', 'Sentiment tracking', 'Follow-up automation'] },
+                { name: 'Analytics Agent', tag: 'Insights', color: 'slate', desc: 'Performance analysis & forecasting', items: ['Win/loss analysis', 'Pipeline health monitoring', 'Revenue forecasting', 'Agent performance metrics', 'A/B test insights'] },
+                { name: 'Meeting Agent', tag: 'Scheduler', color: 'teal', desc: 'Calendar coordination & prep automation', items: ['Smart scheduling & availability', 'Agenda generation', 'Pre-call research briefs', 'Meeting transcription & notes', 'Follow-up action items'] },
+                { name: 'Proposal Agent', tag: 'Document', color: 'amber', desc: 'Intelligent proposal & ROI generation', items: ['Custom proposal creation', 'ROI calculator & business case', 'Pricing scenario modeling', 'Competitive positioning', 'Document version control'] },
+                { name: 'Negotiation Agent', tag: 'Closer', color: 'rose', desc: 'Deal structuring & objection handling', items: ['Objection detection & responses', 'Pricing optimization', 'Terms & conditions guidance', 'Discount approval workflows', 'Win probability modeling'] },
+                { name: 'Contract Agent', tag: 'Legal', color: 'cyan', desc: 'Contract lifecycle management', items: ['Contract generation from templates', 'Redline analysis & suggestions', 'Risk flagging & mitigation', 'E-signature routing', 'Compliance verification'] },
+              ].map((agent, i) => (
+                <div key={i} className={`glass rounded-xl p-4 relative ${agent.core ? 'ring-2 ring-indigo-500/50' : ''}`}>
+                  {agent.core && <div className="absolute -top-2 -right-2 bg-indigo-500 text-white text-xs px-2 py-1 rounded-full font-bold">CORE</div>}
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-semibold text-white text-base">{agent.name}</h3>
+                    <span className="text-xs px-2 py-1 rounded bg-white/10 text-slate-300">{agent.tag}</span>
+                  </div>
+                  <p className="text-sm text-slate-500 italic mb-3">{agent.desc}</p>
+                  <div className="text-sm text-slate-400 space-y-1">
+                    {agent.items.map((item, j) => <div key={j}>● {item}</div>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Key Hand-offs */}
+            <div className="glass rounded-xl p-4">
+              <h3 className="text-lg font-semibold text-white mb-3">Key Agent Hand-offs</h3>
+              <div className="grid grid-cols-6 gap-4 text-sm">
+                {[
+                  { from: 'Lead Gen', to: 'Qualification', flow: 'Enriched leads → BANT check' },
+                  { from: 'Qualification', to: 'Outreach', flow: 'Qualified leads → Campaign' },
+                  { from: 'Outreach', to: 'Meeting', flow: 'Positive response → Schedule' },
+                  { from: 'Meeting', to: 'Proposal', flow: 'Discovery → Custom proposal' },
+                  { from: 'Proposal', to: 'Negotiation', flow: 'Terms review → Close deal' },
+                  { from: 'Negotiation', to: 'Contract', flow: 'Agreement → Legal docs' },
+                ].map((h, i) => (
+                  <div key={i} className="bg-white/5 rounded-lg p-3 border border-white/10 text-center">
+                    <div className="text-emerald-400 font-semibold">{h.from}</div>
+                    <div className="text-slate-600 my-1">↓</div>
+                    <div className="text-blue-400 font-semibold">{h.to}</div>
+                    <div className="text-xs text-slate-500 mt-2">{h.flow}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Coordination Rules */}
+            <div className="glass rounded-xl p-4 mt-4">
+              <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400">⚙️</span>
+                Coordination Rules
+              </h3>
+              <div className="grid grid-cols-5 gap-4">
+                {[
+                  { label: 'Global Context', text: 'Master Orchestrator maintains deal state across all agents', color: 'indigo' },
+                  { label: 'Autonomous Scope', text: 'Each agent operates independently within boundaries', color: 'emerald' },
+                  { label: 'Critical Path Sync', text: 'Synchronous coordination for high-stakes decisions', color: 'amber' },
+                  { label: 'Parallel Operations', text: 'Non-blocking tasks run concurrently', color: 'blue' },
+                  { label: 'Failover Mechanisms', text: 'Automatic recovery & task reassignment', color: 'rose' },
+                ].map((rule, i) => (
+                  <div key={i} className="bg-white/5 border border-white/10 rounded-lg p-3">
+                    <div className="flex items-start gap-2 mb-2">
+                      <span className={`text-${rule.color}-400 mt-0.5`}>●</span>
+                      <span className="text-white font-semibold text-sm">{rule.label}</span>
+                    </div>
+                    <p className="text-slate-400 text-sm pl-4">{rule.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+      // Slide 13: Data Flow & Comprehensive RBAC
+      const DataFlowSlide = () => (
+        <div className="slide-container bg-[#0a0a1a] p-6 pb-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-slate-900/50 to-red-900/20"></div>
+          <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-3xl"></div>
+          
+          <div className="max-w-7xl mx-auto relative z-10">
+            <div className="mb-4">
+              <div className="inline-flex items-center gap-2 bg-blue-500/20 border border-blue-500/30 text-blue-300 px-5 py-2 rounded-full text-sm font-medium mb-3">
+                DATA FLOW & SECURITY
+              </div>
+              <h1 className="text-4xl font-bold text-white mb-2">Data Flow & Role-Based Access Control</h1>
+              <p className="text-slate-400 text-lg">System-wide data orchestration and comprehensive security boundaries</p>
+            </div>
+
+            {/* Core Data Flow */}
+            <div className="glass rounded-xl p-4 mb-4">
+              <h2 className="text-xl font-semibold text-white mb-4">Core Data Flow Architecture</h2>
+              <div className="grid grid-cols-4 gap-3">
+                {[
+                  { title: 'Data Sources', color: 'blue', sections: [
+                    { name: 'External APIs', items: ['ZoomInfo / Apollo.io', 'Clearbit Enrichment', 'LinkedIn Sales Nav', 'Crunchbase', '6sense / Demandbase'] },
+                    { name: 'CRM System', items: ['Salesforce / HubSpot', 'Lead/Opportunity data', 'Activity history', 'Account hierarchy'] },
+                    { name: 'Communication', items: ['Email (Gmail/Outlook)', 'Calendar (Google/MS)', 'Slack / Teams', 'Phone / SMS (Twilio)'] },
+                  ]},
+                  { title: 'Ingestion Layer', color: 'purple', sections: [
+                    { name: 'API Gateway', items: ['Rate limit enforcement', 'Authentication (OAuth2)', 'Request routing', 'Error handling'] },
+                    { name: 'ETL Pipeline', items: ['Data extraction', 'Schema transformation', 'Deduplication', 'Data validation'] },
+                    { name: 'Event Stream', items: ['Kafka / RabbitMQ', 'Real-time events', 'Message queuing', 'Event replay'] },
+                  ]},
+                  { title: 'Processing Layer', color: 'indigo', sections: [
+                    { name: 'Vector Database', items: ['Pinecone / Weaviate', 'Embeddings storage', 'Semantic search', 'Context retrieval'] },
+                    { name: 'Agent Memory', items: ['Redis (session state)', 'PostgreSQL (persistent)', 'Conversation history', 'Shared blackboard'] },
+                    { name: 'ML Models', items: ['Lead scoring', 'Sentiment analysis', 'Win probability', 'Churn prediction'] },
+                  ]},
+                  { title: 'Output Layer', color: 'emerald', sections: [
+                    { name: 'CRM Sync', items: ['Bidirectional sync', 'Field mapping', 'Conflict resolution', 'Activity logging'] },
+                    { name: 'Notifications', items: ['Email alerts', 'Slack messages', 'Mobile push', 'SMS updates'] },
+                    { name: 'Analytics', items: ['Dashboard updates', 'Report generation', 'Forecasts', 'KPI tracking'] },
+                  ]},
+                ].map((col, i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="bg-white/20 text-white rounded-lg p-2 text-center font-semibold text-base">{col.title}</div>
+                    {col.sections.map((sec, j) => (
+                      <div key={j} className="bg-white/5 border border-white/10 rounded-lg p-3">
+                        <h4 className="font-medium text-white text-sm mb-1">{sec.name}</h4>
+                        <div className="text-xs text-slate-400 space-y-0.5">
+                          {sec.items.map((item, k) => <div key={k}>• {item}</div>)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Comprehensive RBAC Matrix */}
+            <div className="glass rounded-xl p-4">
+              <h2 className="text-xl font-semibold text-white mb-4">Comprehensive Role-Based Access Control (RBAC) Matrix</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/20">
+                      <th className="text-left p-3 text-slate-300 font-semibold bg-white/5">Agent / Role</th>
+                      <th className="text-center p-3 text-slate-300 font-semibold bg-white/5">CRM Read</th>
+                      <th className="text-center p-3 text-slate-300 font-semibold bg-white/5">CRM Write</th>
+                      <th className="text-center p-3 text-slate-300 font-semibold bg-white/5">Email Send</th>
+                      <th className="text-center p-3 text-slate-300 font-semibold bg-white/5">PII Access</th>
+                      <th className="text-center p-3 text-slate-300 font-semibold bg-white/5">Calendar</th>
+                      <th className="text-center p-3 text-slate-300 font-semibold bg-white/5">Pricing Edit</th>
+                      <th className="text-center p-3 text-slate-300 font-semibold bg-white/5">Contract Sign</th>
+                      <th className="text-center p-3 text-slate-300 font-semibold bg-white/5">Analytics</th>
+                      <th className="text-center p-3 text-slate-300 font-semibold bg-white/5">External API</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-slate-300">
+                    <tr className="border-b border-white/10 bg-emerald-500/5">
+                      <td className="p-3 font-medium text-emerald-400">Lead Gen Agent</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (New)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Read)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Own)</td>
+                      <td className="text-center p-3">✅</td>
+                    </tr>
+                    <tr className="border-b border-white/10 bg-blue-500/5">
+                      <td className="p-3 font-medium text-blue-400">Qualification Agent</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (Update)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Read)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Own)</td>
+                      <td className="text-center p-3">❌</td>
+                    </tr>
+                    <tr className="border-b border-white/10 bg-purple-500/5">
+                      <td className="p-3 font-medium text-purple-400">Outreach Agent</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (Activity)</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (Read)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Own)</td>
+                      <td className="text-center p-3">✅ (Email)</td>
+                    </tr>
+                    <tr className="border-b border-white/10 bg-teal-500/5">
+                      <td className="p-3 font-medium text-teal-400">Meeting Agent</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (Activity)</td>
+                      <td className="text-center p-3">✅ (Invite)</td>
+                      <td className="text-center p-3">✅ (Read)</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Own)</td>
+                      <td className="text-center p-3">✅ (Cal)</td>
+                    </tr>
+                    <tr className="border-b border-white/10 bg-amber-500/5">
+                      <td className="p-3 font-medium text-amber-400">Proposal Agent</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (Attach)</td>
+                      <td className="text-center p-3">✅ (Draft)</td>
+                      <td className="text-center p-3">✅ (Read)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (View)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Own)</td>
+                      <td className="text-center p-3">✅ (Docs)</td>
+                    </tr>
+                    <tr className="border-b border-white/10 bg-rose-500/5">
+                      <td className="p-3 font-medium text-rose-400">Negotiation Agent</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (Draft)</td>
+                      <td className="text-center p-3">✅ (Read)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (≤15%)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Full)</td>
+                      <td className="text-center p-3">❌</td>
+                    </tr>
+                    <tr className="border-b border-white/10 bg-cyan-500/5">
+                      <td className="p-3 font-medium text-cyan-400">Contract Agent</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (Full)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (View)</td>
+                      <td className="text-center p-3">❌ (Route)</td>
+                      <td className="text-center p-3">✅ (Own)</td>
+                      <td className="text-center p-3">✅ (Sign)</td>
+                    </tr>
+                    <tr className="border-b border-white/10 bg-slate-500/5">
+                      <td className="p-3 font-medium text-slate-400">Analytics Agent</td>
+                      <td className="text-center p-3">✅ (All)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Report)</td>
+                      <td className="text-center p-3">✅ (Agg)</td>
+                      <td className="text-center p-3">✅ (Read)</td>
+                      <td className="text-center p-3">✅ (View)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Full)</td>
+                      <td className="text-center p-3">✅ (BI)</td>
+                    </tr>
+                    <tr className="border-b border-white/10 bg-indigo-500/5">
+                      <td className="p-3 font-medium text-indigo-400">Master Orchestrator</td>
+                      <td className="text-center p-3">✅ (All)</td>
+                      <td className="text-center p-3">✅ (All)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Meta)</td>
+                      <td className="text-center p-3">✅ (Read)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Full)</td>
+                      <td className="text-center p-3">❌</td>
+                    </tr>
+                    <tr className="border-b border-white/20 bg-white/10">
+                      <td className="p-3 font-semibold text-white">SDR (Human)</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (Full)</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Own)</td>
+                      <td className="text-center p-3">✅</td>
+                    </tr>
+                    <tr className="border-b border-white/20 bg-white/10">
+                      <td className="p-3 font-semibold text-white">Account Executive</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (Full)</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (≤10%)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Own)</td>
+                      <td className="text-center p-3">✅</td>
+                    </tr>
+                    <tr className="border-b border-white/20 bg-white/10">
+                      <td className="p-3 font-semibold text-white">Sales Manager</td>
+                      <td className="text-center p-3">✅ (Team)</td>
+                      <td className="text-center p-3">✅ (Team)</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (Full)</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (≤25%)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅ (Team)</td>
+                      <td className="text-center p-3">✅</td>
+                    </tr>
+                    <tr className="bg-white/10">
+                      <td className="p-3 font-semibold text-white">Legal Team</td>
+                      <td className="text-center p-3">✅ (Contract)</td>
+                      <td className="text-center p-3">✅ (Contract)</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (Full)</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">❌</td>
+                      <td className="text-center p-3">✅</td>
+                      <td className="text-center p-3">✅ (Contract)</td>
+                      <td className="text-center p-3">✅ (Sign)</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 grid grid-cols-4 gap-3 text-xs text-slate-400">
+                <div className="bg-white/5 p-3 rounded-lg">
+                  <span className="text-emerald-400 font-semibold">✅ Full:</span> Complete access to function
+                </div>
+                <div className="bg-white/5 p-3 rounded-lg">
+                  <span className="text-blue-400 font-semibold">✅ (Scoped):</span> Limited to specific scope
+                </div>
+                <div className="bg-white/5 p-3 rounded-lg">
+                  <span className="text-amber-400 font-semibold">✅ (≤X%):</span> Within threshold limits
+                </div>
+                <div className="bg-white/5 p-3 rounded-lg">
+                  <span className="text-red-400 font-semibold">❌:</span> No access / Escalate to authorized role
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+      // Slide 14: Security, Compliance, Observability & Incident Response
+      const SecurityObservabilitySlide = () => (
+        <div className="slide-container bg-[#0a0a1a] p-6 pb-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-red-900/20 via-slate-900/50 to-orange-900/20"></div>
+          <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-orange-600/10 rounded-full blur-3xl"></div>
+          
+          <div className="max-w-7xl mx-auto relative z-10">
+            <div className="mb-4">
+              <div className="inline-flex items-center gap-2 bg-red-500/20 border border-red-500/30 text-red-300 px-5 py-2 rounded-full text-sm font-medium mb-3">
+                SECURITY & OBSERVABILITY
+              </div>
+              <h1 className="text-4xl font-bold text-white mb-2">Security, Compliance & Observability</h1>
+              <p className="text-slate-400 text-lg">Enterprise-grade security controls, compliance frameworks, and comprehensive monitoring</p>
+            </div>
+
+            {/* Security & Compliance Architecture */}
+            <div className="glass rounded-xl p-5 mb-4">
+              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center text-red-400">🔒</span>
+                Security & Compliance Architecture
+              </h2>
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { title: 'Authentication & Authorization', color: 'red', items: [
+                    { label: 'User Authentication', sub: ['SSO via SAML 2.0 & OAuth 2.0', 'Multi-factor authentication (MFA)', 'JWT token validation & refresh', 'Session management & timeout'] },
+                    { label: 'Service Authentication', sub: ['API key rotation (90-day cycle)', 'Service accounts with least privilege', 'mTLS for inter-agent communication', 'Certificate pinning'] },
+                  ]},
+                  { title: 'Data Protection', color: 'amber', items: [
+                    { label: 'Encryption Standards', sub: ['TLS 1.3 for data in transit', 'AES-256 for data at rest', 'AWS KMS for key management', 'Field-level encryption for PII'] },
+                    { label: 'Data Masking & Privacy', sub: ['PII redaction in all logs', 'Tokenization of sensitive data', 'Data anonymization for analytics', 'Secure data deletion'] },
+                  ]},
+                  { title: 'Compliance Frameworks', color: 'emerald', items: [
+                    { label: 'Regulatory Compliance', sub: ['GDPR (EU data protection)', 'CCPA (California privacy)', 'SOC 2 Type II certified', 'ISO 27001 alignment'] },
+                    { label: 'Data Governance Controls', sub: ['Data retention policies (configurable)', 'Right to be forgotten (RTBF)', 'Consent management system', 'Data processing agreements'] },
+                  ]},
+                ].map((sec, i) => (
+                  <div key={i} className={`bg-${sec.color}-500/10 border border-${sec.color}-500/30 rounded-xl p-4`}>
+                    <h3 className={`font-semibold text-${sec.color}-400 text-base mb-3`}>{sec.title}</h3>
+                    {sec.items.map((item, j) => (
+                      <div key={j} className="mb-4 last:mb-0">
+                        <div className="text-sm text-white font-semibold mb-2">{item.label}</div>
+                        <ul className="text-sm text-slate-400 space-y-1 pl-3">
+                          {item.sub.map((s, k) => <li key={k} className="flex items-start gap-2"><span className="text-slate-500 mt-0.5">•</span>{s}</li>)}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Observability & Monitoring */}
+            <div className="glass rounded-xl p-5 mb-4">
+              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400">📊</span>
+                Observability & Monitoring Stack
+              </h2>
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { title: 'Metrics Collection', platform: 'Prometheus + Grafana', color: 'blue', items: [
+                    { label: 'System Health Metrics', sub: ['CPU/Memory utilization per agent', 'Request latency (p50, p95, p99)', 'Error rate by agent and endpoint', 'Queue depth and throughput'] },
+                    { label: 'Business Metrics', sub: ['Leads processed per hour', 'Email open/response rates', 'Deal velocity and conversion', 'Agent task completion rates'] },
+                  ]},
+                  { title: 'Centralized Logging', platform: 'ELK Stack / Datadog', color: 'purple', items: [
+                    { label: 'Structured Log Format', sub: ['JSON format with correlation IDs', 'Log levels: DEBUG → CRITICAL', 'Automatic PII redaction', 'Request/response payloads'] },
+                    { label: 'Key Event Logging', sub: ['Agent task start/completion', 'External API calls (req/resp)', 'Human escalation triggers', 'Security events & access logs'] },
+                  ]},
+                  { title: 'Distributed Tracing', platform: 'Jaeger / OpenTelemetry', color: 'teal', items: [
+                    { label: 'End-to-End Tracing', sub: ['Full request flow visualization', 'Agent-to-agent handoff tracking', 'Bottleneck identification', 'Dependency mapping'] },
+                    { label: 'Span Details Captured', sub: ['Agent name + task type', 'Execution time breakdown', 'Failure root cause analysis', 'External service latency'] },
+                  ]},
+                ].map((sec, i) => (
+                  <div key={i} className={`bg-${sec.color}-500/10 border border-${sec.color}-500/30 rounded-xl p-4`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className={`font-semibold text-${sec.color}-400 text-base`}>{sec.title}</h3>
+                      <span className="text-xs px-2 py-1 bg-white/10 rounded text-slate-400">{sec.platform}</span>
+                    </div>
+                    {sec.items.map((item, j) => (
+                      <div key={j} className="mb-4 last:mb-0">
+                        <div className="text-sm text-white font-semibold mb-2">{item.label}</div>
+                        <ul className="text-sm text-slate-400 space-y-1 pl-3">
+                          {item.sub.map((s, k) => <li key={k} className="flex items-start gap-2"><span className="text-slate-500 mt-0.5">•</span>{s}</li>)}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Alerting & Incident Response */}
+            <div className="glass rounded-xl p-5">
+              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-400">🚨</span>
+                Alerting & Incident Response
+              </h2>
+              <div className="grid grid-cols-2 gap-6">
+                {/* Alert Thresholds */}
+                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                  <h3 className="font-semibold text-white text-base mb-4">Alert Severity Thresholds</h3>
+                  <div className="space-y-3">
+                    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                        <span className="font-semibold text-red-400 text-sm">CRITICAL (P1)</span>
+                        <span className="text-xs text-slate-500 ml-auto">Response: &lt;15 min</span>
+                      </div>
+                      <ul className="text-sm text-slate-400 space-y-1 pl-5">
+                        <li>• Error rate exceeds 5% for any agent</li>
+                        <li>• Core API down for &gt;2 minutes</li>
+                        <li>• Data breach or security incident detected</li>
+                        <li>• Complete agent worker pool failure</li>
+                      </ul>
+                    </div>
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+                        <span className="font-semibold text-amber-400 text-sm">WARNING (P2)</span>
+                        <span className="text-xs text-slate-500 ml-auto">Response: &lt;1 hour</span>
+                      </div>
+                      <ul className="text-sm text-slate-400 space-y-1 pl-5">
+                        <li>• Latency p95 exceeds 2 seconds</li>
+                        <li>• Message queue depth &gt;1000</li>
+                        <li>• Disk space below 20% threshold</li>
+                        <li>• External API degradation detected</li>
+                      </ul>
+                    </div>
+                    <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                        <span className="font-semibold text-blue-400 text-sm">INFO (P3)</span>
+                        <span className="text-xs text-slate-500 ml-auto">Response: &lt;24 hours</span>
+                      </div>
+                      <ul className="text-sm text-slate-400 space-y-1 pl-5">
+                        <li>• New deployment completed</li>
+                        <li>• Configuration change applied</li>
+                        <li>• Scheduled maintenance window</li>
+                        <li>• Agent scaling events</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Incident Response & Notification */}
+                <div className="space-y-4">
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                    <h3 className="font-semibold text-white text-base mb-3">Notification Channels</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { icon: '📟', name: 'PagerDuty', desc: 'On-call rotation for P1/P2', color: 'emerald' },
+                        { icon: '💬', name: 'Slack', desc: '#sales-ai-alerts channel', color: 'purple' },
+                        { icon: '📧', name: 'Email', desc: 'Engineering team distribution', color: 'blue' },
+                        { icon: '🎫', name: 'Jira', desc: 'Auto-create incident tickets', color: 'amber' },
+                      ].map((ch, i) => (
+                        <div key={i} className={`p-3 bg-${ch.color}-500/10 border border-${ch.color}-500/20 rounded-lg`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-lg">{ch.icon}</span>
+                            <span className={`font-semibold text-${ch.color}-400 text-sm`}>{ch.name}</span>
+                          </div>
+                          <p className="text-xs text-slate-400">{ch.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                    <h3 className="font-semibold text-white text-base mb-3">Incident Response Workflow</h3>
+                    <div className="space-y-2">
+                      {[
+                        { step: 1, action: 'Alert triggered', detail: 'Automated detection via monitoring rules' },
+                        { step: 2, action: 'On-call notified', detail: 'PagerDuty escalation within SLA' },
+                        { step: 3, action: 'Triage & diagnose', detail: 'Runbook execution, log analysis' },
+                        { step: 4, action: 'Mitigation applied', detail: 'Rollback, scaling, or hotfix' },
+                        { step: 5, action: 'Resolution & RCA', detail: 'Post-incident review within 48hrs' },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
+                          <div className="w-7 h-7 rounded-full bg-indigo-500/30 text-indigo-400 flex items-center justify-center text-xs font-bold">{item.step}</div>
+                          <div>
+                            <span className="text-white font-semibold text-sm">{item.action}</span>
+                            <span className="text-slate-500 text-sm ml-2">— {item.detail}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+      // Render current slide
+      const renderSlide = () => {
+        switch (currentSlide) {
+          case 0: return <IntroSlide />;
+          case 1: return <ValuePropositionSlide />;
+          case 2: return <UseCaseSlide ucData={useCasesData[0]} />;
+          case 3: return <UseCaseSlide ucData={useCasesData[1]} />;
+          case 4: return <UseCaseSlide ucData={useCasesData[2]} />;
+          case 5: return <UseCaseSlide ucData={useCasesData[3]} />;
+          case 6: return <UseCaseSlide ucData={useCasesData[4]} />;
+          case 7: return <UseCaseSlide ucData={useCasesData[5]} />;
+          case 8: return <UserFlowSlide flowData={userFlowsData[0]} />;
+          case 9: return <UserFlowSlide flowData={userFlowsData[1]} />;
+          case 10: return <UserFlowSlide flowData={userFlowsData[2]} />;
+          case 11: return <ArchitectureSlide />;
+          case 12: return <AgentSuiteSlide />;
+          case 13: return <DataFlowSlide />;
+          case 14: return <SecurityObservabilitySlide />;
+          default: return <IntroSlide />;
+        }
+      };
+
+      return (
+        <div className="relative">
+          {renderSlide()}
+          <Navigation />
+        </div>
+      );
+    }
+
+    ReactDOM.render(<AISellerPresentation />, document.getElementById('root'));
+  </script>
+</body>
+</html>
