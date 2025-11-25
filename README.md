@@ -2,8 +2,6 @@
 
 This repo contains a single, browser-based, presentation-style overview of the **AI Seller** multi-agent architecture for B2B sales automation.
 
----
-
 ## Contents
 
 - **`AI_Seller_Crew_Enhanced.html`**  
@@ -25,7 +23,6 @@ This repo contains a single, browser-based, presentation-style overview of the *
 - **Security / Compliance / Legal:** Review data handling, RBAC, and controls.
 - **Clients / Prospects:** Use as a visual explanation of how AI Seller works end-to-end.
 
----
 
 ## Editing the Deck
 
@@ -38,7 +35,6 @@ This repo contains a single, browser-based, presentation-style overview of the *
 
 Edit the file, then refresh your browser to see the changes.
 
----
 
 ## How to View
 
