@@ -33,6 +33,11 @@
     function AISellerPresentation() {
       const [currentSlide, setCurrentSlide] = useState(0);
       const totalSlides = 15;
+      
+      // Touch state for swipe detection
+      const [touchStart, setTouchStart] = useState(null);
+      const [touchEnd, setTouchEnd] = useState(null);
+      const minSwipeDistance = 50;
 
       const nextSlide = useCallback(() => {
         setCurrentSlide((prev) => (prev < totalSlides - 1 ? prev + 1 : prev));
@@ -42,6 +47,7 @@
         setCurrentSlide((prev) => (prev > 0 ? prev - 1 : prev));
       }, []);
 
+      // Keyboard navigation
       useEffect(() => {
         const handleKeyDown = (e) => {
           if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
@@ -50,6 +56,26 @@
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
       }, [nextSlide, prevSlide]);
+
+      // Swipe Handlers
+      const onTouchStart = (e) => {
+        setTouchEnd(null);
+        setTouchStart(e.targetTouches[0].clientX);
+      };
+
+      const onTouchMove = (e) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+      };
+
+      const onTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+        
+        if (isLeftSwipe) nextSlide();
+        if (isRightSwipe) prevSlide();
+      };
 
       const slideGroups = [
         { name: 'Intro', slides: [0] },
@@ -63,84 +89,116 @@
       ];
 
       // Navigation Component
-      const Navigation = () => (
-        <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-white/10 p-4 z-50">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <button 
-              onClick={prevSlide} 
-              disabled={currentSlide === 0}
-              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-base transition-all flex items-center gap-2 shadow-lg"
-            >
-              <span>←</span> Previous
-            </button>
+      const Navigation = () => {
+        const activeGroup = slideGroups.find(g => g.slides.includes(currentSlide));
+        const showSubNav = activeGroup && activeGroup.slides.length > 1;
+
+        return (
+          <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-white/10 z-50">
+            {/* Sub Navigation for Multi-slide groups */}
+            {showSubNav && (
+              <div className="flex justify-center gap-2 py-2 border-b border-white/5 bg-black/20 overflow-x-auto px-4">
+                {activeGroup.slides.map((slideIdx, i) => (
+                  <button
+                    key={slideIdx}
+                    onClick={() => setCurrentSlide(slideIdx)}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap border border-white/10 ${currentSlide === slideIdx ? 'bg-indigo-500 text-white border-indigo-400' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}
+                  >
+                    {activeGroup.name === 'Use Cases' ? `UC-${i+1}` : activeGroup.name === 'User Flows' ? `Flow-${i+1}` : i+1}
+                  </button>
+                ))}
+              </div>
+            )}
             
-            <div className="flex items-center gap-2">
-              {slideGroups.map((group, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentSlide(group.slides[0])}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${group.slides.includes(currentSlide) ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'}`}
-                >
-                  {group.name}
-                </button>
-              ))}
-              <div className="ml-4 px-3 py-2 bg-white/10 rounded-lg text-sm text-white/60">
+            <div className="p-2 md:p-4 max-w-7xl mx-auto flex items-center justify-between gap-2 md:gap-4">
+              <button 
+                onClick={prevSlide} 
+                disabled={currentSlide === 0}
+                className="px-3 md:px-6 py-2 md:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm md:text-base transition-all flex items-center gap-2 shadow-lg shrink-0"
+              >
+                <span>←</span> <span className="hidden md:inline">Previous</span>
+              </button>
+              
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide flex-1 justify-start md:justify-center mask-image-scroll">
+                {slideGroups.map((group, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentSlide(group.slides[0])}
+                    className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all whitespace-nowrap ${group.slides.includes(currentSlide) ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'}`}
+                  >
+                    {group.name}
+                  </button>
+                ))}
+              </div>
+              
+              <div className="hidden md:block ml-4 px-3 py-2 bg-white/10 rounded-lg text-sm text-white/60 shrink-0">
                 {currentSlide + 1} / {totalSlides}
               </div>
+              
+              <button 
+                onClick={nextSlide} 
+                disabled={currentSlide === totalSlides - 1}
+                className="px-3 md:px-6 py-2 md:py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm md:text-base transition-all flex items-center gap-2 shadow-lg shrink-0"
+              >
+                <span className="hidden md:inline">Next</span> <span>→</span>
+              </button>
             </div>
-            
-            <button 
-              onClick={nextSlide} 
-              disabled={currentSlide === totalSlides - 1}
-              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-base transition-all flex items-center gap-2 shadow-lg"
-            >
-              Next <span>→</span>
-            </button>
           </div>
-        </div>
-      );
+        );
+      };
 
       // Slide 0: Introduction
       const IntroSlide = () => (
-        <div className="slide-container bg-[#0a0a1a] p-8 pb-24 flex flex-col justify-center relative overflow-hidden">
+        <div className="slide-container bg-[#0a0a1a] p-4 md:p-8 pb-32 md:pb-36 flex flex-col justify-center relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/30 via-purple-900/20 to-slate-900/50"></div>
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl"></div>
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl"></div>
           
-          <div className="max-w-5xl mx-auto text-center relative z-10">
-            <div className="mb-10">
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-300 px-6 py-2.5 rounded-full text-base font-medium mb-8">
+          <div className="max-w-5xl mx-auto text-center relative z-10 w-full">
+            <div className="mb-8 mt-10 md:mt-0">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-300 px-4 md:px-6 py-2 md:py-2.5 rounded-full text-sm md:text-base font-medium mb-6 md:mb-8">
                 <span className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-pulse"></span>
                 MULTI-AGENT AI PLATFORM
               </div>
-              <h1 className="text-8xl font-bold text-white mb-6 tracking-tight">
+              <h1 className="text-5xl md:text-8xl font-bold text-white mb-6 tracking-tight">
                 AI <span className="gradient-text">Seller</span>
               </h1>
-              <p className="text-3xl text-slate-400 font-light">
+              <p className="text-xl md:text-3xl text-slate-400 font-light px-4">
                 Crew AI-Powered Sales Automation Platform
               </p>
+
+              {/* Attribution */}
+              <div className="mt-8 flex flex-col items-center">
+                <p className="text-slate-500 text-sm font-medium mb-2 uppercase tracking-wide">Architecture created by Georgi Naydenov</p>
+                <div className="flex gap-4 text-sm">
+                  <a href="https://georginaydenov.github.io/Georgi-Naydenov-Portfolio/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 transition-colors border-b border-transparent hover:border-indigo-300 font-semibold">Portfolio</a>
+                  <a href="https://www.linkedin.com/in/georgi-naydenov/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 transition-colors border-b border-transparent hover:border-indigo-300 font-semibold">LinkedIn</a>
+                  <a href="https://github.com/GeorgiNaydenov" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 transition-colors border-b border-transparent hover:border-indigo-300 font-semibold">Github</a>
+                </div>
+              </div>
             </div>
 
-            <div className="glass rounded-3xl p-10 mt-16 glow">
-              <h2 className="text-2xl font-semibold text-white mb-8">Presentation Overview — 15 Slides</h2>
-              <div className="grid grid-cols-7 gap-4">
+            <div className="glass rounded-3xl p-6 md:p-10 mt-6 md:mt-10 glow">
+              <h2 className="text-xl md:text-2xl font-semibold text-white mb-6 md:mb-8">Presentation Overview — 15 Slides</h2>
+              <div className="grid grid-cols-2 md:grid-cols-7 gap-3 md:gap-4">
                 {slideGroups.map((group, index) => (
                   <button
                     key={index}
                     onClick={() => setCurrentSlide(group.slides[0])}
-                    className="glass card-hover rounded-2xl p-5 text-left group"
+                    className="glass card-hover rounded-2xl p-4 md:p-5 text-left group"
                   >
-                    <div className="text-4xl font-bold bg-gradient-to-br from-indigo-400 to-purple-400 bg-clip-text text-transparent mb-3">{String(index + 1).padStart(2, '0')}</div>
-                    <div className="text-white/90 font-semibold text-base group-hover:text-white transition-colors">{group.name}</div>
-                    <div className="text-slate-500 text-sm mt-1">{group.slides.length} slide{group.slides.length > 1 ? 's' : ''}</div>
+                    <div className="text-2xl md:text-4xl font-bold bg-gradient-to-br from-indigo-400 to-purple-400 bg-clip-text text-transparent mb-2 md:mb-3">{String(index + 1).padStart(2, '0')}</div>
+                    <div className="text-white/90 font-semibold text-sm md:text-base group-hover:text-white transition-colors">{group.name}</div>
+                    <div className="text-slate-500 text-xs md:text-sm mt-1">{group.slides.length} slide{group.slides.length > 1 ? 's' : ''}</div>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="mt-12 text-slate-500 text-base flex items-center justify-center gap-6">
-              <span className="flex items-center gap-2"><kbd className="px-3 py-1.5 bg-white/10 rounded text-sm">←</kbd><kbd className="px-3 py-1.5 bg-white/10 rounded text-sm">→</kbd> Navigate</span>
-              <span className="flex items-center gap-2"><kbd className="px-3 py-1.5 bg-white/10 rounded text-sm">Space</kbd> Next slide</span>
+            <div className="mt-8 md:mt-12 text-slate-500 text-sm md:text-base flex flex-col md:flex-row items-center justify-center gap-3 md:gap-6">
+              <span className="flex items-center gap-2 hidden md:flex"><kbd className="px-3 py-1.5 bg-white/10 rounded text-sm">←</kbd><kbd className="px-3 py-1.5 bg-white/10 rounded text-sm">→</kbd> Navigate</span>
+              <span className="flex items-center gap-2 md:hidden">Swipe to navigate</span>
+              <span className="flex items-center gap-2 hidden md:flex"><kbd className="px-3 py-1.5 bg-white/10 rounded text-sm">Space</kbd> Next slide</span>
             </div>
           </div>
         </div>
@@ -148,48 +206,48 @@
 
       // Slide 1: Value Proposition
       const ValuePropositionSlide = () => (
-        <div className="slide-container bg-[#0a0a1a] p-8 pb-24 relative overflow-hidden">
+        <div className="slide-container bg-[#0a0a1a] p-4 md:p-8 pb-32 md:pb-36 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/20 via-indigo-900/20 to-purple-900/20"></div>
           <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-600/10 rounded-full blur-3xl"></div>
           <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-3xl"></div>
           
-          <div className="max-w-7xl mx-auto relative z-10">
-            <div className="mb-8">
-              <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 px-5 py-2 rounded-full text-sm font-medium mb-4">
+          <div className="max-w-7xl mx-auto relative z-10 pt-4 md:pt-0">
+            <div className="mb-6 md:mb-8">
+              <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 px-5 py-2 rounded-full text-xs md:text-sm font-medium mb-4">
                 VALUE PROPOSITION
               </div>
-              <h1 className="text-5xl font-bold text-white mb-3">Transform Your Sales Operations</h1>
-              <p className="text-slate-400 text-xl">End-to-end sales automation powered by autonomous agent coordination</p>
+              <h1 className="text-3xl md:text-5xl font-bold text-white mb-3">Transform Your Sales Operations</h1>
+              <p className="text-slate-400 text-lg md:text-xl">End-to-end sales automation powered by autonomous agent coordination</p>
             </div>
 
             {/* Key Value Metrics */}
-            <div className="grid grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <div className="glass rounded-2xl p-6 text-center card-hover">
-                <div className="text-5xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent mb-2">95%</div>
+                <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent mb-2">95%</div>
                 <div className="text-white/80 text-base font-medium">Prospecting Automation</div>
                 <div className="text-slate-500 text-sm mt-1">Automated lead discovery & enrichment</div>
               </div>
               <div className="glass rounded-2xl p-6 text-center card-hover">
-                <div className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent mb-2">60%</div>
+                <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent mb-2">60%</div>
                 <div className="text-white/80 text-base font-medium">Prep Time Reduction</div>
                 <div className="text-slate-500 text-sm mt-1">AI-generated meeting briefs & research</div>
               </div>
               <div className="glass rounded-2xl p-6 text-center card-hover">
-                <div className="text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">3.2</div>
+                <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">3.2</div>
                 <div className="text-white/80 text-base font-medium">Days to Signature</div>
                 <div className="text-slate-500 text-sm mt-1">Down from 7.5 days average</div>
               </div>
               <div className="glass rounded-2xl p-6 text-center card-hover">
-                <div className="text-5xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent mb-2">92%</div>
+                <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent mb-2">92%</div>
                 <div className="text-white/80 text-base font-medium">Forecast Accuracy</div>
                 <div className="text-slate-500 text-sm mt-1">ML-powered pipeline intelligence</div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               {/* Pain Points Addressed */}
               <div className="glass rounded-2xl p-6">
-                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <h3 className="text-lg md:text-xl font-semibold text-white mb-4 flex items-center gap-2">
                   <span className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center text-red-400 text-xl">✗</span>
                   Pain Points Addressed
                 </h3>
@@ -202,10 +260,10 @@
                     { title: 'Limited Pipeline Visibility', desc: 'Stalled deals and at-risk opportunities go undetected' },
                   ].map((item, i) => (
                     <div key={i} className="flex items-start gap-3 p-3 bg-white/5 rounded-xl">
-                      <div className="w-2 h-2 rounded-full bg-red-400 mt-2.5"></div>
+                      <div className="w-2 h-2 rounded-full bg-red-400 mt-2.5 shrink-0"></div>
                       <div>
-                        <div className="text-white/90 text-base font-medium">{item.title}</div>
-                        <div className="text-slate-500 text-sm">{item.desc}</div>
+                        <div className="text-white/90 text-sm md:text-base font-medium">{item.title}</div>
+                        <div className="text-slate-500 text-xs md:text-sm">{item.desc}</div>
                       </div>
                     </div>
                   ))}
@@ -214,7 +272,7 @@
 
               {/* Solution Capabilities */}
               <div className="glass rounded-2xl p-6">
-                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <h3 className="text-lg md:text-xl font-semibold text-white mb-4 flex items-center gap-2">
                   <span className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl">✓</span>
                   AI-Powered Solutions
                 </h3>
@@ -227,10 +285,10 @@
                     { title: 'Predictive Pipeline Intelligence', desc: 'Win/loss analysis, revenue forecasting, early risk detection (+15 days)' },
                   ].map((item, i) => (
                     <div key={i} className="flex items-start gap-3 p-3 bg-white/5 rounded-xl">
-                      <div className="w-2 h-2 rounded-full bg-emerald-400 mt-2.5"></div>
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 mt-2.5 shrink-0"></div>
                       <div>
-                        <div className="text-white/90 text-base font-medium">{item.title}</div>
-                        <div className="text-slate-500 text-sm">{item.desc}</div>
+                        <div className="text-white/90 text-sm md:text-base font-medium">{item.title}</div>
+                        <div className="text-slate-500 text-xs md:text-sm">{item.desc}</div>
                       </div>
                     </div>
                   ))}
@@ -241,7 +299,7 @@
             {/* Agent Suite Overview */}
             <div className="glass rounded-2xl p-6">
               <h3 className="text-xl font-semibold text-white mb-4">9 Specialized Agents Working in Concert</h3>
-              <div className="grid grid-cols-9 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-9 gap-3">
                 {[
                   { name: 'Lead Gen', color: 'emerald', desc: 'Prospecting & enrichment' },
                   { name: 'Qualification', color: 'blue', desc: 'BANT/MEDDIC automation' },
@@ -259,7 +317,7 @@
                   </div>
                 ))}
               </div>
-              <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between text-sm text-slate-400">
+              <div className="mt-4 pt-4 border-t border-white/10 flex flex-col md:flex-row items-center justify-between text-sm text-slate-400 gap-2">
                 <span>✓ Parallel execution</span>
                 <span>✓ Context management & handoffs</span>
                 <span>✓ Human-in-the-loop controls</span>
@@ -272,28 +330,31 @@
 
       // Use Case Slide Template
       const UseCaseSlide = ({ ucData }) => (
-        <div className="slide-container bg-[#0a0a1a] p-8 pb-24 relative overflow-hidden">
+        <div className="slide-container bg-[#0a0a1a] p-4 md:p-8 pb-32 md:pb-36 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-slate-900/50 to-purple-900/20"></div>
           <div className="absolute top-0 left-1/3 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-3xl"></div>
           
-          <div className="max-w-7xl mx-auto relative z-10">
+          <div className="max-w-7xl mx-auto relative z-10 pt-4 md:pt-0">
             <div className="mb-6">
-              <div className="inline-flex items-center gap-2 bg-blue-500/20 border border-blue-500/30 text-blue-300 px-5 py-2 rounded-full text-sm font-medium mb-3">
+              <div className="inline-flex items-center gap-2 bg-blue-500/20 border border-blue-500/30 text-blue-300 px-5 py-2 rounded-full text-xs md:text-sm font-medium mb-3">
                 USE CASE {ucData.id}
               </div>
-              <div className="flex items-center gap-4 mb-4">
-                <span className={`bg-${ucData.color}-500 text-white px-4 py-1.5 rounded-lg text-base font-bold`}>{ucData.id}</span>
-                <h1 className="text-4xl font-bold text-white">{ucData.title}</h1>
-                <span className="px-4 py-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg text-base font-semibold">{ucData.automation}</span>
+              <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mb-4">
+                <span className={`bg-${ucData.color}-500 text-white px-4 py-1.5 rounded-lg text-base font-bold w-fit`}>{ucData.id}</span>
+                <h1 className="text-2xl md:text-4xl font-bold text-white">{ucData.title}</h1>
+                <span className="px-4 py-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg text-base font-semibold w-fit">{ucData.automation}</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               {/* Persona & Pain Points */}
               <div className="glass rounded-2xl p-6">
-                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-3">
+                <h3 className="text-lg md:text-xl font-semibold text-white mb-4 flex items-center gap-3">
                   <span className="text-3xl">{ucData.persona.icon}</span>
-                  Target Persona: {ucData.persona.title}
+                  <div className="flex flex-col">
+                    <span className="text-sm font-normal text-slate-400">Target Persona:</span>
+                    <span>{ucData.persona.title}</span>
+                  </div>
                 </h3>
                 <p className="text-slate-400 text-base mb-6">{ucData.persona.description}</p>
                 
@@ -304,8 +365,8 @@
                 <div className="space-y-2">
                   {ucData.painPoints.map((pain, i) => (
                     <div key={i} className="flex items-start gap-3 p-3 bg-red-500/10 rounded-xl border border-red-500/20">
-                      <div className="w-2 h-2 rounded-full bg-red-400 mt-2"></div>
-                      <span className="text-white/90 text-base">{pain}</span>
+                      <div className="w-2 h-2 rounded-full bg-red-400 mt-2 shrink-0"></div>
+                      <span className="text-white/90 text-sm md:text-base">{pain}</span>
                     </div>
                   ))}
                 </div>
@@ -318,7 +379,7 @@
                     <span className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">📥</span>
                     Required Inputs
                   </h4>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {ucData.inputs.map((input, i) => (
                       <div key={i} className="flex items-center gap-2 p-2.5 bg-blue-500/10 rounded-lg border border-blue-500/20">
                         <span className="text-blue-400 font-bold">→</span>
@@ -333,7 +394,7 @@
                     <span className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">📤</span>
                     Outputs & Outcomes
                   </h4>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {ucData.outputs.map((output, i) => (
                       <div key={i} className="flex items-center gap-2 p-2.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
                         <span className="text-emerald-400 font-bold">✓</span>
@@ -346,11 +407,11 @@
             </div>
 
             {/* Architecture Components & Workflow */}
-            <div className="grid grid-cols-3 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
               <div className="glass rounded-2xl p-6">
                 <h4 className="text-lg font-semibold text-purple-400 mb-3 flex items-center gap-2">
                   <span className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">🔧</span>
-                  Architecture Components
+                  Architecture
                 </h4>
                 <div className="space-y-2">
                   {ucData.architecture.map((comp, i) => (
@@ -394,7 +455,7 @@
             </div>
 
             {/* Human-in-Loop */}
-            <div className="glass rounded-xl p-5">
+            <div className="glass rounded-xl p-5 mb-20 md:mb-0">
               <h4 className="text-base font-semibold text-slate-300 mb-2 flex items-center gap-2">
                 <span className="w-6 h-6 rounded bg-white/10 flex items-center justify-center text-sm">👤</span>
                 Human-in-the-Loop Checkpoints
@@ -748,31 +809,34 @@
 
       // User Flow Slide Template
       const UserFlowSlide = ({ flowData }) => (
-        <div className="slide-container bg-[#0a0a1a] p-8 pb-24 relative overflow-hidden">
+        <div className="slide-container bg-[#0a0a1a] p-4 md:p-8 pb-32 md:pb-36 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-slate-900/50 to-emerald-900/20"></div>
           <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-3xl"></div>
           
-          <div className="max-w-7xl mx-auto relative z-10">
+          <div className="max-w-7xl mx-auto relative z-10 pt-4 md:pt-0">
             <div className="mb-6">
-              <div className="inline-flex items-center gap-2 bg-purple-500/20 border border-purple-500/30 text-purple-300 px-5 py-2 rounded-full text-sm font-medium mb-3">
+              <div className="inline-flex items-center gap-2 bg-purple-500/20 border border-purple-500/30 text-purple-300 px-5 py-2 rounded-full text-xs md:text-sm font-medium mb-3">
                 USER FLOW {flowData.id}
               </div>
-              <div className="flex items-center gap-4">
-                <span className={`px-4 py-2 bg-${flowData.color}-500 text-white text-base font-bold rounded-lg`}>Flow {flowData.id}</span>
-                <h1 className="text-4xl font-bold text-white">{flowData.title}</h1>
+              <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+                <span className={`px-4 py-2 bg-${flowData.color}-500 text-white text-base font-bold rounded-lg w-fit`}>Flow {flowData.id}</span>
+                <h1 className="text-2xl md:text-4xl font-bold text-white">{flowData.title}</h1>
               </div>
             </div>
 
             {/* Flow Steps */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               {flowData.steps.map((step, i) => (
                 <div key={i} className="glass rounded-2xl p-5 relative">
                   {i < flowData.steps.length - 1 && (
-                    <div className="absolute top-1/2 -right-4 transform -translate-y-1/2 text-slate-600 text-3xl font-bold z-10">→</div>
+                    <div className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2 text-slate-600 text-3xl font-bold z-10">→</div>
+                  )}
+                  {i < flowData.steps.length - 1 && (
+                    <div className="md:hidden flex justify-center py-2 text-slate-600 text-2xl font-bold">↓</div>
                   )}
                   <div className="flex items-center gap-3 mb-4">
-                    <div className={`w-10 h-10 rounded-full bg-${flowData.color}-500/30 text-${flowData.color}-400 flex items-center justify-center text-lg font-bold`}>{step.step}</div>
-                    <h4 className="font-bold text-white text-lg">{step.title}</h4>
+                    <div className={`w-10 h-10 rounded-full bg-${flowData.color}-500/30 text-${flowData.color}-400 flex items-center justify-center text-lg font-bold shrink-0`}>{step.step}</div>
+                    <h4 className="font-bold text-white text-lg leading-tight">{step.title}</h4>
                   </div>
                   
                   <div className="mb-4">
@@ -785,7 +849,7 @@
                       {step.inputs.map((input, j) => (
                         <div key={j} className="flex items-start gap-2 pl-2">
                           <span className="text-blue-400 mt-0.5">•</span>
-                          <span className="text-slate-300 text-sm">{input}</span>
+                          <span className="text-slate-300 text-xs md:text-sm">{input}</span>
                         </div>
                       ))}
                     </div>
@@ -797,7 +861,7 @@
                       {step.outputs.map((output, j) => (
                         <div key={j} className="flex items-start gap-2 pl-2">
                           <span className="text-emerald-400 mt-0.5">✓</span>
-                          <span className="text-slate-300 text-sm">{output}</span>
+                          <span className="text-slate-300 text-xs md:text-sm">{output}</span>
                         </div>
                       ))}
                     </div>
@@ -805,14 +869,14 @@
 
                   <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                     <div className="text-sm font-semibold text-amber-400 mb-1">Outcome:</div>
-                    <p className="text-white/80 text-sm">{step.outcome}</p>
+                    <p className="text-white/80 text-xs md:text-sm">{step.outcome}</p>
                   </div>
                 </div>
               ))}
             </div>
 
             {/* Human Touch Points & Exceptions */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20 md:pb-0">
               <div className="glass rounded-xl p-5">
                 <h4 className="text-lg font-semibold text-slate-300 mb-3 flex items-center gap-2">
                   <span className="w-8 h-8 rounded bg-white/10 flex items-center justify-center">👤</span>
@@ -822,7 +886,7 @@
                   {flowData.humanTouchPoints.map((point, i) => (
                     <div key={i} className="flex items-start gap-3 p-2.5 bg-white/5 rounded-lg">
                       <span className="text-indigo-400 mt-0.5">●</span>
-                      <span className="text-slate-300 text-base">{point}</span>
+                      <span className="text-slate-300 text-sm md:text-base">{point}</span>
                     </div>
                   ))}
                 </div>
@@ -1002,34 +1066,34 @@
         }
       ];
 
-      // Slide 11: Architecture (same as before but with larger fonts)
+      // Slide 11: Architecture
       const ArchitectureSlide = () => (
-        <div className="slide-container bg-[#0a0a1a] p-6 pb-24 relative overflow-hidden">
+        <div className="slide-container bg-[#0a0a1a] p-4 md:p-6 pb-32 md:pb-36 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-slate-900/50 to-cyan-900/20"></div>
           <div className="absolute top-1/3 left-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl"></div>
           
-          <div className="max-w-7xl mx-auto relative z-10">
+          <div className="max-w-7xl mx-auto relative z-10 pt-4 md:pt-0">
             <div className="mb-4">
-              <div className="inline-flex items-center gap-2 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-5 py-2 rounded-full text-sm font-medium mb-3">
+              <div className="inline-flex items-center gap-2 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-5 py-2 rounded-full text-xs md:text-sm font-medium mb-3">
                 SYSTEM ARCHITECTURE
               </div>
-              <h1 className="text-4xl font-bold text-white mb-2">AI Seller System Architecture</h1>
-              <p className="text-slate-400 text-lg">Multi-Agent Orchestration for End-to-End Sales Lifecycle</p>
+              <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">AI Seller System Architecture</h1>
+              <p className="text-slate-400 text-base md:text-lg">Multi-Agent Orchestration for End-to-End Sales Lifecycle</p>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 pb-20 md:pb-0">
               {/* Layer 1: Client Interface */}
               <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 text-center">
-                <h3 className="text-xl font-semibold text-rose-400 mb-1">Client Interface</h3>
-                <p className="text-base text-slate-400">Web App, CLI, Slack Bot, API, CRM Integration</p>
+                <h3 className="text-lg md:text-xl font-semibold text-rose-400 mb-1">Client Interface</h3>
+                <p className="text-sm md:text-base text-slate-400">Web App, CLI, Slack Bot, API, CRM Integration</p>
               </div>
 
               <div className="flex justify-center"><div className="w-px h-4 bg-gradient-to-b from-rose-500/50 to-cyan-500/50"></div></div>
 
               {/* Layer 2: LLM */}
               <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4 text-center">
-                <h3 className="text-xl font-semibold text-cyan-400 mb-2">LLM Model (Reasoning Engine)</h3>
-                <div className="flex justify-center gap-6 text-sm text-slate-400">
+                <h3 className="text-lg md:text-xl font-semibold text-cyan-400 mb-2">LLM Model (Reasoning Engine)</h3>
+                <div className="flex flex-wrap justify-center gap-2 md:gap-6 text-xs md:text-sm text-slate-400">
                   <span>• Intent classification & routing</span>
                   <span>• Sales strategy generation</span>
                   <span>• Natural language understanding</span>
@@ -1041,17 +1105,17 @@
 
               {/* Layer 3: Prompt Assembly */}
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-center">
-                <h3 className="text-xl font-semibold text-amber-400 mb-1">Prompt Assembly & Context Injection</h3>
-                <p className="text-base text-slate-400">Construct prompts with lead data, conversation history, sales playbooks, and compliance rules</p>
+                <h3 className="text-lg md:text-xl font-semibold text-amber-400 mb-1">Prompt Assembly & Context Injection</h3>
+                <p className="text-sm md:text-base text-slate-400">Construct prompts with lead data, conversation history, sales playbooks, and compliance rules</p>
               </div>
 
               <div className="flex justify-center"><div className="w-px h-4 bg-gradient-to-b from-amber-500/50 to-purple-500/50"></div></div>
 
               {/* Layer 4: Crew Orchestration */}
               <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-5">
-                <h3 className="text-2xl font-semibold text-purple-400 text-center mb-2">Crew AI Orchestration Layer</h3>
-                <p className="text-center text-base text-slate-400 mb-4">Multi-Agent Coordination & Task Distribution</p>
-                <div className="grid grid-cols-3 gap-3">
+                <h3 className="text-xl md:text-2xl font-semibold text-purple-400 text-center mb-2">Crew AI Orchestration Layer</h3>
+                <p className="text-center text-sm md:text-base text-slate-400 mb-4">Multi-Agent Coordination & Task Distribution</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="bg-white/5 rounded-lg p-4 border border-white/10">
                     <h4 className="font-semibold text-white text-base mb-2">Plan Engine</h4>
                     <ul className="text-sm text-slate-400 space-y-1">
@@ -1083,9 +1147,9 @@
 
               {/* Layer 5: State & Memory Management */}
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-5">
-                <h3 className="text-2xl font-semibold text-yellow-400 text-center mb-2">State & Memory Management</h3>
-                <p className="text-center text-base text-slate-400 mb-4">Shared context, conversation history, sales intelligence, lead profiles</p>
-                <div className="grid grid-cols-3 gap-3">
+                <h3 className="text-xl md:text-2xl font-semibold text-yellow-400 text-center mb-2">State & Memory Management</h3>
+                <p className="text-center text-sm md:text-base text-slate-400 mb-4">Shared context, conversation history, sales intelligence, lead profiles</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="bg-white/5 rounded-lg p-4 border border-white/10">
                     <h4 className="font-semibold text-white text-base mb-2">Lead Intelligence</h4>
                     <ul className="text-sm text-slate-400 space-y-1">
@@ -1111,16 +1175,16 @@
                     </ul>
                   </div>
                 </div>
-                <div className="text-center text-sm text-yellow-400/70 italic mt-3">Direct context retrieval • Memory updates • Cache queries • Session state checks</div>
+                <div className="text-center text-xs md:text-sm text-yellow-400/70 italic mt-3">Direct context retrieval • Memory updates • Cache queries • Session state checks</div>
               </div>
 
               <div className="flex justify-center"><div className="w-px h-4 bg-gradient-to-b from-yellow-500/50 to-indigo-500/50"></div></div>
 
               {/* Layer 6: Agent Worker Pool */}
               <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-5">
-                <h3 className="text-2xl font-semibold text-indigo-400 text-center mb-2">Sales Agent Worker Pool</h3>
-                <p className="text-center text-base text-slate-400 mb-4">Specialized agents for autonomous sales execution</p>
-                <div className="grid grid-cols-8 gap-2">
+                <h3 className="text-xl md:text-2xl font-semibold text-indigo-400 text-center mb-2">Sales Agent Worker Pool</h3>
+                <p className="text-center text-sm md:text-base text-slate-400 mb-4">Specialized agents for autonomous sales execution</p>
+                <div className="grid grid-cols-2 md:grid-cols-8 gap-2">
                   {[
                     { name: 'Lead Gen', desc: 'Prospecting, enrichment' },
                     { name: 'Qualification', desc: 'BANT/MEDDIC' },
@@ -1143,29 +1207,29 @@
 
               {/* Layer 7: External Integration */}
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-5">
-                <h3 className="text-2xl font-semibold text-blue-400 text-center mb-4">External Integration Layer</h3>
-                <div className="grid grid-cols-4 gap-3">
+                <h3 className="text-xl md:text-2xl font-semibold text-blue-400 text-center mb-4">External Integration Layer</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                     <h4 className="font-semibold text-white text-sm mb-1">CRM Systems</h4>
-                    <p className="text-sm text-slate-400">Salesforce, HubSpot, Pipedrive</p>
+                    <p className="text-xs md:text-sm text-slate-400">Salesforce, HubSpot, Pipedrive</p>
                   </div>
                   <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                     <h4 className="font-semibold text-white text-sm mb-1">Communication</h4>
-                    <p className="text-sm text-slate-400">Email, LinkedIn, SMS, Slack</p>
+                    <p className="text-xs md:text-sm text-slate-400">Email, LinkedIn, SMS, Slack</p>
                   </div>
                   <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                     <h4 className="font-semibold text-white text-sm mb-1">Data Enrichment</h4>
-                    <p className="text-sm text-slate-400">Clearbit, ZoomInfo, Apollo</p>
+                    <p className="text-xs md:text-sm text-slate-400">Clearbit, ZoomInfo, Apollo</p>
                   </div>
                   <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                     <h4 className="font-semibold text-white text-sm mb-1">Calendar & Docs</h4>
-                    <p className="text-sm text-slate-400">Google, DocuSign, PandaDoc</p>
+                    <p className="text-xs md:text-sm text-slate-400">Google, DocuSign, PandaDoc</p>
                   </div>
                 </div>
               </div>
 
               {/* Footer Notes */}
-              <div className="grid grid-cols-3 gap-3 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
                   <h4 className="font-semibold text-red-400 text-base mb-3 flex items-center gap-2">
                     <span>🔒</span> Security & Compliance
@@ -1207,20 +1271,20 @@
 
       // Slide 12: Agent Suite
       const AgentSuiteSlide = () => (
-        <div className="slide-container bg-[#0a0a1a] p-6 pb-24 relative overflow-hidden">
+        <div className="slide-container bg-[#0a0a1a] p-4 md:p-6 pb-32 md:pb-36 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/20 via-slate-900/50 to-indigo-900/20"></div>
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-3xl"></div>
           
-          <div className="max-w-7xl mx-auto relative z-10">
+          <div className="max-w-7xl mx-auto relative z-10 pt-4 md:pt-0">
             <div className="mb-4">
-              <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 px-5 py-2 rounded-full text-sm font-medium mb-3">
+              <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 px-5 py-2 rounded-full text-xs md:text-sm font-medium mb-3">
                 MULTI-AGENT ARCHITECTURE
               </div>
-              <h1 className="text-4xl font-bold text-white mb-2">AI Seller Agent Suite</h1>
-              <p className="text-slate-400 text-lg">Master Orchestrator coordinates specialized sales agents across the entire deal lifecycle</p>
+              <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">AI Seller Agent Suite</h1>
+              <p className="text-slate-400 text-base md:text-lg">Master Orchestrator coordinates specialized sales agents across the entire deal lifecycle</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               {[
                 { name: 'Lead Generation Agent', tag: 'Prospector', color: 'emerald', desc: 'AI-powered lead discovery and enrichment', items: ['ICP matching & scoring', 'Multi-source data aggregation', 'Intent signal detection', 'Contact enrichment & validation', 'Account prioritization'] },
                 { name: 'Master Orchestrator', tag: 'Coordinator', color: 'indigo', desc: 'Central intelligence coordinating all sales agents', items: ['Deal stage classification', 'Agent task assignment & routing', 'Context management & handoffs', 'Strategy optimization', 'Performance monitoring'], core: true },
@@ -1249,7 +1313,7 @@
             {/* Key Hand-offs */}
             <div className="glass rounded-xl p-4">
               <h3 className="text-lg font-semibold text-white mb-3">Key Agent Hand-offs</h3>
-              <div className="grid grid-cols-6 gap-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
                 {[
                   { from: 'Lead Gen', to: 'Qualification', flow: 'Enriched leads → BANT check' },
                   { from: 'Qualification', to: 'Outreach', flow: 'Qualified leads → Campaign' },
@@ -1269,12 +1333,12 @@
             </div>
 
             {/* Coordination Rules */}
-            <div className="glass rounded-xl p-4 mt-4">
+            <div className="glass rounded-xl p-4 mt-4 pb-20 md:pb-4">
               <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
                 <span className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400">⚙️</span>
                 Coordination Rules
               </h3>
-              <div className="grid grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 {[
                   { label: 'Global Context', text: 'Master Orchestrator maintains deal state across all agents', color: 'indigo' },
                   { label: 'Autonomous Scope', text: 'Each agent operates independently within boundaries', color: 'emerald' },
@@ -1298,23 +1362,23 @@
 
       // Slide 13: Data Flow & Comprehensive RBAC
       const DataFlowSlide = () => (
-        <div className="slide-container bg-[#0a0a1a] p-6 pb-24 relative overflow-hidden">
+        <div className="slide-container bg-[#0a0a1a] p-4 md:p-6 pb-32 md:pb-36 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-slate-900/50 to-red-900/20"></div>
           <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-3xl"></div>
           
-          <div className="max-w-7xl mx-auto relative z-10">
+          <div className="max-w-7xl mx-auto relative z-10 pt-4 md:pt-0">
             <div className="mb-4">
-              <div className="inline-flex items-center gap-2 bg-blue-500/20 border border-blue-500/30 text-blue-300 px-5 py-2 rounded-full text-sm font-medium mb-3">
+              <div className="inline-flex items-center gap-2 bg-blue-500/20 border border-blue-500/30 text-blue-300 px-5 py-2 rounded-full text-xs md:text-sm font-medium mb-3">
                 DATA FLOW & SECURITY
               </div>
-              <h1 className="text-4xl font-bold text-white mb-2">Data Flow & Role-Based Access Control</h1>
-              <p className="text-slate-400 text-lg">System-wide data orchestration and comprehensive security boundaries</p>
+              <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">Data Flow & Role-Based Access Control</h1>
+              <p className="text-slate-400 text-base md:text-lg">System-wide data orchestration and comprehensive security boundaries</p>
             </div>
 
             {/* Core Data Flow */}
             <div className="glass rounded-xl p-4 mb-4">
-              <h2 className="text-xl font-semibold text-white mb-4">Core Data Flow Architecture</h2>
-              <div className="grid grid-cols-4 gap-3">
+              <h2 className="text-lg md:text-xl font-semibold text-white mb-4">Core Data Flow Architecture</h2>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 {[
                   { title: 'Data Sources', color: 'blue', sections: [
                     { name: 'External APIs', items: ['ZoomInfo / Apollo.io', 'Clearbit Enrichment', 'LinkedIn Sales Nav', 'Crunchbase', '6sense / Demandbase'] },
@@ -1353,10 +1417,10 @@
             </div>
 
             {/* Comprehensive RBAC Matrix */}
-            <div className="glass rounded-xl p-4">
-              <h2 className="text-xl font-semibold text-white mb-4">Comprehensive Role-Based Access Control (RBAC) Matrix</h2>
+            <div className="glass rounded-xl p-4 pb-20 md:pb-4">
+              <h2 className="text-lg md:text-xl font-semibold text-white mb-4">Comprehensive Role-Based Access Control (RBAC) Matrix</h2>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm min-w-[800px]">
                   <thead>
                     <tr className="border-b border-white/20">
                       <th className="text-left p-3 text-slate-300 font-semibold bg-white/5">Agent / Role</th>
@@ -1531,7 +1595,7 @@
                   </tbody>
                 </table>
               </div>
-              <div className="mt-4 grid grid-cols-4 gap-3 text-xs text-slate-400">
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3 text-xs text-slate-400">
                 <div className="bg-white/5 p-3 rounded-lg">
                   <span className="text-emerald-400 font-semibold">✅ Full:</span> Complete access to function
                 </div>
@@ -1552,27 +1616,27 @@
 
       // Slide 14: Security, Compliance, Observability & Incident Response
       const SecurityObservabilitySlide = () => (
-        <div className="slide-container bg-[#0a0a1a] p-6 pb-24 relative overflow-hidden">
+        <div className="slide-container bg-[#0a0a1a] p-4 md:p-6 pb-32 md:pb-36 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-red-900/20 via-slate-900/50 to-orange-900/20"></div>
           <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-3xl"></div>
           <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-orange-600/10 rounded-full blur-3xl"></div>
           
-          <div className="max-w-7xl mx-auto relative z-10">
+          <div className="max-w-7xl mx-auto relative z-10 pt-4 md:pt-0">
             <div className="mb-4">
-              <div className="inline-flex items-center gap-2 bg-red-500/20 border border-red-500/30 text-red-300 px-5 py-2 rounded-full text-sm font-medium mb-3">
+              <div className="inline-flex items-center gap-2 bg-red-500/20 border border-red-500/30 text-red-300 px-5 py-2 rounded-full text-xs md:text-sm font-medium mb-3">
                 SECURITY & OBSERVABILITY
               </div>
-              <h1 className="text-4xl font-bold text-white mb-2">Security, Compliance & Observability</h1>
-              <p className="text-slate-400 text-lg">Enterprise-grade security controls, compliance frameworks, and comprehensive monitoring</p>
+              <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">Security, Compliance & Observability</h1>
+              <p className="text-slate-400 text-base md:text-lg">Enterprise-grade security controls, compliance frameworks, and comprehensive monitoring</p>
             </div>
 
             {/* Security & Compliance Architecture */}
             <div className="glass rounded-xl p-5 mb-4">
-              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <h2 className="text-lg md:text-xl font-semibold text-white mb-4 flex items-center gap-2">
                 <span className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center text-red-400">🔒</span>
                 Security & Compliance Architecture
               </h2>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                   { title: 'Authentication & Authorization', color: 'red', items: [
                     { label: 'User Authentication', sub: ['SSO via SAML 2.0 & OAuth 2.0', 'Multi-factor authentication (MFA)', 'JWT token validation & refresh', 'Session management & timeout'] },
@@ -1604,11 +1668,11 @@
 
             {/* Observability & Monitoring */}
             <div className="glass rounded-xl p-5 mb-4">
-              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <h2 className="text-lg md:text-xl font-semibold text-white mb-4 flex items-center gap-2">
                 <span className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400">📊</span>
                 Observability & Monitoring Stack
               </h2>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                   { title: 'Metrics Collection', platform: 'Prometheus + Grafana', color: 'blue', items: [
                     { label: 'System Health Metrics', sub: ['CPU/Memory utilization per agent', 'Request latency (p50, p95, p99)', 'Error rate by agent and endpoint', 'Queue depth and throughput'] },
@@ -1642,12 +1706,12 @@
             </div>
 
             {/* Alerting & Incident Response */}
-            <div className="glass rounded-xl p-5">
-              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <div className="glass rounded-xl p-5 pb-20 md:pb-5">
+              <h2 className="text-lg md:text-xl font-semibold text-white mb-4 flex items-center gap-2">
                 <span className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-400">🚨</span>
                 Alerting & Incident Response
               </h2>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Alert Thresholds */}
                 <div className="bg-white/5 border border-white/10 rounded-xl p-4">
                   <h3 className="font-semibold text-white text-base mb-4">Alert Severity Thresholds</h3>
@@ -1727,10 +1791,11 @@
                         { step: 5, action: 'Resolution & RCA', detail: 'Post-incident review within 48hrs' },
                       ].map((item, i) => (
                         <div key={i} className="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
-                          <div className="w-7 h-7 rounded-full bg-indigo-500/30 text-indigo-400 flex items-center justify-center text-xs font-bold">{item.step}</div>
+                          <div className="w-7 h-7 rounded-full bg-indigo-500/30 text-indigo-400 flex items-center justify-center text-xs font-bold shrink-0">{item.step}</div>
                           <div>
                             <span className="text-white font-semibold text-sm">{item.action}</span>
-                            <span className="text-slate-500 text-sm ml-2">— {item.detail}</span>
+                            <span className="text-slate-500 text-xs md:text-sm ml-2 hidden md:inline">— {item.detail}</span>
+                            <div className="text-slate-500 text-xs md:hidden mt-1">{item.detail}</div>
                           </div>
                         </div>
                       ))}
@@ -1766,7 +1831,7 @@
       };
 
       return (
-        <div className="relative">
+        <div className="relative" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
           {renderSlide()}
           <Navigation />
         </div>
